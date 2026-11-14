@@ -1,6 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { canonicalRelayRoute, hasHostMarker, parseRoute, rememberHost, routeSearch, type Route } from './navigation';
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import ChallengeBuilder from "../packages/challenges/ChallengeBuilder";
 import {
+  ApiError,
   createRelay,
   getRelay,
   completeRelay,
@@ -65,140 +67,283 @@ function ArenaArtwork() {
   );
 }
 export default function App() {
-  const initialId = new URLSearchParams(location.search).get("relay");
-  const [screen, setScreen] = useState<Screen>(initialId ? "relay" : "home");
+  const [screen, setScreen] = useState<Screen>('home');
   const [config, setConfig] = useState<ChallengeConfig>(DEFAULT_CONFIG);
   const [attempt, setAttempt] = useState<AttemptResult | null>(null);
   const [relay, setRelay] = useState<Relay | null>(null);
-  const [name, setName] = useState(
-    () => sessionStorage.getItem("rib-name") || "",
-  );
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
-  const [replayIndex, setReplayIndex] = useState<number | null>(null),
-    [arenaKey, setArenaKey] = useState(0);
+  const [name, setName] = useState(() => {
+    try {
+      return sessionStorage.getItem('rib-name') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [replayIndex, setReplayIndex] = useState<number | null>(null);
+  const [arenaKey, setArenaKey] = useState(0);
   const [sourceRelay, setSourceRelay] = useState<string | undefined>();
+  const [host, setHost] = useState(false);
+  const [routePending, setRoutePending] = useState(false);
+  const [routeFailure, setRouteFailure] = useState<'invalid' | 'retryable' | 'unavailable' | null>(null);
+  const generation = useRef(0);
+  const activeRequest = useRef<number | null>(null);
   const proven = !!attempt?.success && sameConfig(attempt.config, config);
-  const invitation = relay ? `${location.origin}/?relay=${relay.id}` : "";
+  const invitation = relay
+    ? `${location.origin}/${routeSearch({ screen: 'relay', id: relay.id })}`
+    : '';
+
   useEffect(() => {
-    if (!initialId) return;
-    setBusy(true);
-    getRelay(initialId)
-      .then((r) => {
-        setRelay(r);
-        setConfig(r.challenge);
-        if (r.status === "completed") setScreen("premiere");
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setBusy(false));
+    function restoreFromLocation() {
+      enterRoute(parseRoute(location.search), true);
+    }
+    restoreFromLocation();
+    window.addEventListener('popstate', restoreFromLocation);
+    return () => {
+      window.removeEventListener('popstate', restoreFromLocation);
+      generation.current += 1;
+      activeRequest.current = null;
+    };
   }, []);
+
   useEffect(() => {
-    sessionStorage.setItem("rib-name", name);
+    try {
+      sessionStorage.setItem('rib-name', name);
+    } catch {
+      // The current form can still use the name in memory.
+    }
   }, [name]);
-  function changeConfig(c: ChallengeConfig) {
-    setConfig(c);
-    setAttempt(null);
-    setNotice("");
+
+  function writeRoute(route: Exclude<Route, { screen: 'invalid' }>, mode: 'push' | 'replace') {
+    const url = `/${routeSearch(route)}`;
+    if (mode === 'push') history.pushState(null, '', url);
+    else if (location.pathname + location.search + location.hash !== url) {
+      history.replaceState(null, '', url);
+    }
   }
-  function home() {
-    setScreen("home");
-    setReplayIndex(null);
-    setError("");
-    history.replaceState(null, "", "/");
-  }
-  function newChallenge() {
-    setArenaKey((k) => k + 1);
-    setError("");
-    setNotice("");
+
+  function enterRoute(route: Route, restoring: boolean, remixConfig?: ChallengeConfig) {
+    const token = ++generation.current;
+    activeRequest.current = null;
+    setBusy(false);
+    setError('');
+    setNotice('');
     setRelay(null);
+    setHost(false);
     setAttempt(null);
     setReplayIndex(null);
-    setConfig(DEFAULT_CONFIG);
-    setSourceRelay(undefined);
-    history.replaceState(null, "", "/");
-    setScreen("arena");
-  }
-  async function publish() {
-    if (!attempt || !proven) return;
-    if (!name.trim()) {
-      setError("Add your player name before passing the shot.");
+    setConfig(remixConfig ?? DEFAULT_CONFIG);
+    setSourceRelay(route.screen === 'arena' ? route.parentId : undefined);
+    setRoutePending(false);
+    setRouteFailure(null);
+    setScreen(route.screen === 'home' || route.screen === 'arena' ? route.screen : 'relay');
+
+    if (route.screen === 'invalid') {
+      setRouteFailure('invalid');
       return;
     }
-    setBusy(true);
-    setError("");
+    if (route.screen === 'home' || route.screen === 'arena') writeRoute(route, 'replace');
+    if (route.screen === 'home') return;
+    if (route.screen === 'arena') {
+      setArenaKey((key) => key + 1);
+      if (restoring) setNotice('Unpublished attempts reset when you reopen the arena.');
+      if (route.parentId && !remixConfig) void loadRoute(route.parentId, token, true);
+      return;
+    }
+    void loadRoute(route.id, token, false);
+  }
+
+  async function loadRoute(id: string, token: number, remix: boolean) {
+    setRoutePending(true);
     try {
-      const r = await createRelay({
+      const result = await getRelay(id);
+      if (token !== generation.current) return;
+      if (remix) setConfig(result.challenge);
+      else showRelay(result, readHost(id));
+    } catch (cause) {
+      if (token !== generation.current) return;
+      if (cause instanceof ApiError && cause.status === 404) setRouteFailure('invalid');
+      else if (!(cause instanceof ApiError) || cause.status >= 500 || cause.status === 408 || cause.status === 429) setRouteFailure('retryable');
+      else setRouteFailure('unavailable');
+    } finally {
+      if (token === generation.current) setRoutePending(false);
+    }
+  }
+
+  function readHost(id: string) {
+    try {
+      return hasHostMarker(sessionStorage, id);
+    } catch {
+      return false;
+    }
+  }
+
+  function showRelay(result: Relay, asHost: boolean) {
+    const route = canonicalRelayRoute(result.id, result.status);
+    setRelay(result);
+    setConfig(result.challenge);
+    setHost(asHost);
+    if (asHost) setAttempt(result.hostAttempt);
+    else setAttempt(null);
+    setReplayIndex(null);
+    setScreen(route.screen);
+    writeRoute(route, 'replace');
+  }
+
+  function changeConfig(c: ChallengeConfig) {
+    if (activeRequest.current !== null || relay) return;
+    setConfig(c);
+    setAttempt(null);
+    setNotice('');
+  }
+
+  function navigate(route: Exclude<Route, { screen: 'invalid' }>, remixConfig?: ChallengeConfig) {
+    writeRoute(route, 'push');
+    enterRoute(route, false, remixConfig);
+  }
+
+  function home() {
+    navigate({ screen: 'home' });
+  }
+
+  function newChallenge() {
+    navigate({ screen: 'arena' });
+  }
+
+  function retryRoute() {
+    enterRoute(parseRoute(location.search), true);
+  }
+
+  function startRequest() {
+    const token = generation.current;
+    activeRequest.current = token;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    return token;
+  }
+
+  function endRequest(token: number) {
+    if (token !== generation.current) return;
+    activeRequest.current = null;
+    setBusy(false);
+  }
+
+  function showRequestError(cause: unknown, token: number) {
+    if (token !== generation.current) return;
+    setError(cause instanceof Error ? cause.message : 'The request failed. Please try again.');
+  }
+
+  async function publish() {
+    if (screen !== 'arena' || activeRequest.current !== null || !attempt || !proven) return;
+    if (!name.trim()) {
+      setError('Add your player name before passing the shot.');
+      return;
+    }
+    const token = startRequest();
+    try {
+      const result = await createRelay({
         hostName: name.trim(),
         hostAttempt: attempt,
         parentChallengeId: sourceRelay,
       });
-      setRelay(r);
-      setNotice("Your relay is ready. Send the link to your teammate.");
-    } catch (e) {
-      setError((e as Error).message);
+      let recoverySaved = true;
+      try {
+        rememberHost(sessionStorage, result.id);
+      } catch {
+        recoverySaved = false;
+      }
+      if (token !== generation.current) return;
+      showRelay(result, true);
+      setNotice(recoverySaved
+        ? 'Your relay is ready. Send the link to your teammate.'
+        : 'Your relay is ready. Browser storage is unavailable, so refreshing may lose your host view.');
+    } catch (cause) {
+      showRequestError(cause, token);
     } finally {
-      setBusy(false);
+      endRequest(token);
     }
   }
+
   async function finishRelay() {
-    if (!relay || !attempt || !proven) return;
+    if (!guest || activeRequest.current !== null || !relay || !attempt || !proven) return;
     if (!name.trim()) {
-      setError("Add your player name to join the premiere.");
+      setError('Add your player name to join the premiere.');
       return;
     }
-    setBusy(true);
-    setError("");
+    const token = startRequest();
     try {
-      const r = await completeRelay(relay.id, {
+      const result = await completeRelay(relay.id, {
         guestName: name.trim(),
         guestAttempt: attempt,
       });
-      setRelay(r);
-      setReplayIndex(null);
-      setNotice("");
-      setScreen("premiere");
-    } catch (e) {
-      setError((e as Error).message);
+      if (token === generation.current) showRelay(result, false);
+    } catch (cause) {
+      if (token !== generation.current) return;
+      if (cause instanceof ApiError && cause.status === 409) {
+        try {
+          const current = await getRelay(relay.id);
+          if (token !== generation.current) return;
+          if (current.status === 'completed') {
+            showRelay(current, false);
+            return;
+          }
+        } catch (reloadCause) {
+          showRequestError(reloadCause, token);
+          return;
+        }
+      }
+      showRequestError(cause, token);
     } finally {
-      setBusy(false);
+      endRequest(token);
     }
   }
+
   async function refreshRelay() {
-    if (!relay) return;
-    setBusy(true);
+    if (!relay || activeRequest.current !== null) return;
+    const token = startRequest();
     try {
-      const r = await getRelay(relay.id);
-      setRelay(r);
-      if (r.status === "completed") {
-        setNotice("");
-        setScreen("premiere");
-        setReplayIndex(null);
-      } else
-        setNotice(
-          "Your teammate has not finished yet. Check again after they land it.",
-        );
-    } catch (e) {
-      setError((e as Error).message);
+      const result = await getRelay(relay.id);
+      if (token !== generation.current) return;
+      showRelay(result, host);
+      if (result.status === 'waiting') {
+        setNotice('Your teammate has not finished yet. Check again after they land it.');
+      }
+    } catch (cause) {
+      if (token === generation.current && cause instanceof ApiError && cause.status === 404) {
+        setRelay(null);
+        setAttempt(null);
+        setHost(false);
+        setRouteFailure('invalid');
+      } else {
+        showRequestError(cause, token);
+      }
     } finally {
-      setBusy(false);
+      endRequest(token);
     }
   }
+
   async function copyLink() {
+    const token = generation.current;
     try {
       await navigator.clipboard.writeText(invitation);
-      setNotice("Invitation copied. Your teammate can open it on this server.");
+      if (token === generation.current) {
+        setNotice('Invitation copied. Your teammate can open it on this server.');
+      }
     } catch {
-      setNotice("Copy the invitation from the field below.");
+      if (token === generation.current) setNotice('Copy the invitation from the invitation field.');
     }
   }
-  const guest = screen === "relay";
+
+  const guest = screen === 'relay' && !!relay && !host;
   const replayAttempt =
     replayIndex === 0
       ? relay?.hostAttempt
       : replayIndex === 1
         ? relay?.guestAttempt
         : undefined;
+  const attemptGeneration = generation.current;
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -223,7 +368,7 @@ export default function App() {
             THE ARENA
           </button>
           <a
-            href="https://github.com/Kx007-del/faze-run-it-back"
+            href="https://github.com/Kx007-del/hackuta26"
             target="_blank"
             rel="noreferrer"
           >
@@ -412,17 +557,28 @@ export default function App() {
               {notice}
             </div>
           )}
-          {busy && !relay && guest ? (
-            <div className="loading">LOADING YOUR SQUAD’S SHOT…</div>
-          ) : guest && !relay ? (
+          {routePending ? (
+            <div className="loading" role="status">
+              {screen === 'arena' ? 'LOADING THE REMIX…' : 'LOADING YOUR SQUAD’S SHOT…'}
+            </div>
+          ) : routeFailure ? (
             <div className="empty-state">
-              <h2>THIS RELAY COULDN’T LOAD</h2>
-              <p>Check the invitation, or start a challenge of your own.</p>
+              <h2>{screen === 'arena' ? 'THIS REMIX COULDN’T LOAD' : 'THIS RELAY COULDN’T LOAD'}</h2>
+              <p role="alert">
+                {routeFailure === 'invalid'
+                  ? 'Check the link, or start a challenge of your own.'
+                  : routeFailure === 'retryable'
+                    ? 'The server couldn’t load this challenge. Try again.'
+                    : 'This challenge is unavailable. Open the link again or start a new challenge.'}
+              </p>
+              {routeFailure === 'retryable' && (
+                <button className="secondary" onClick={retryRoute}>TRY AGAIN</button>
+              )}
               <button className="primary" onClick={newChallenge}>
                 ENTER THE ARENA <Arrow />
               </button>
             </div>
-          ) : screen === "premiere" && relay ? (
+          ) : screen === 'premiere' && relay ? (
             <>
               <div className="premiere-banner">
                 <div>
@@ -492,15 +648,7 @@ export default function App() {
               <div className="premiere-actions">
                 <button
                   className="primary"
-                  onClick={() => {
-                    setSourceRelay(relay.id);
-                    setConfig(relay.challenge);
-                    setRelay(null);
-                    setAttempt(null);
-                    setReplayIndex(null);
-                    setScreen("arena");
-                    history.replaceState(null, "", "/");
-                  }}
+                  onClick={() => navigate({ screen: 'arena', parentId: relay.id }, relay.challenge)}
                 >
                   REMIX THIS RELAY <Arrow />
                 </button>
@@ -533,7 +681,7 @@ export default function App() {
                     replay={replayAttempt}
                     onReplayEnd={() => setReplayIndex(null)}
                     onComplete={(r) => {
-                      if (r.success) {
+                      if (r.success && attemptGeneration === generation.current && !host && activeRequest.current === null) {
                         setAttempt(r);
                         setNotice(
                         guest
@@ -606,7 +754,7 @@ export default function App() {
                     >
                       {busy ? "SAVING…" : "FINISH THE RELAY"} <Arrow />
                     </button>
-                  ) : relay ? (
+                  ) : host && relay ? (
                     <>
                       <span className="micro">YOUR INVITATION</span>
                       <input
@@ -623,7 +771,7 @@ export default function App() {
                         disabled={busy}
                         onClick={refreshRelay}
                       >
-                        CHECK TEAMMATE PROGRESS ↻
+                        {busy ? 'CHECKING TEAMMATE PROGRESS…' : 'CHECK TEAMMATE PROGRESS ↻'}
                       </button>
                     </>
                   ) : (

@@ -1,25 +1,55 @@
-# Validation — first playable release
+# Validation: Hackuta26 H26-1
 
-## Automated checks
+Date: November 14, 2026. Runtime: Node v26.13.1. Reference baseline: 98ece8b; source reference 3f66407f09880c445239f1c95858d6c73f449a30. Checks below were executed by the desktop coordinator against the integrated code, not by the read-only provider turns.
 
-- TypeScript check and production bundle pass.
-- Production server smoke checks pass: home page serves built assets, health returns OK, and client routes return the app.
-- Nine tests pass: six gameplay-rule tests and three API/persistence tests.
-- Gameplay tests exercise airborne requirements, all supported target distances, 180/360 feasibility, insufficient spin, oscillation, and missed aim.
-- API tests exercise the actual HTTP lifecycle, frozen settings, duplicate completion, overwrite rejection, invalid submissions and SQLite persistence across restart.
+## Automated results
 
-## Browser checks completed
+- npm ci --ignore-scripts: exit 0; 153 packages installed; npm reported zero vulnerabilities at install time.
+- npm test: exit 0; 27 passed, zero failed/skipped/cancelled.
+- Original nine tests retained: six gameplay rule cases and three API/persistence cases.
+- Claude 2 supplied eighteen new tests, applied with assertions unchanged: nine navigation/marker cases and nine HTTP/persistence cases.
+- npm run build: exit 0, including TypeScript noEmit (also checks tests/) and Vite production bundle.
+- New tests cover route parsing/round-trips, malformed/duplicate params, ID boundaries, parameter injection, canonical completed/waiting routes, isolated host markers, corrupt markers, storage exceptions, actual exported JSON error middleware, 400/413/500, headersSent delegation, path precedence, nested directories, relative/default/memory paths, and waiting/completed persistence after close/reopen.
+- Generic500 regression intentionally emits one fixed 'Unhandled server request error.' log. This is expected test output.
 
-- Home page loads with supplied logo and web fonts.
-- A real airborne shot unlocks sharing through the normal game UI.
-- Creating a new challenge resets gameplay.
-- Changing a proven 14m challenge to 20m disables sharing until the new shot is completed.
-- A completed 20m shot creates an invitation.
-- A second browser tab loads that invitation with challenge controls locked.
-- The second player completes the actual shot, submits it, and unlocks the premiere.
-- Both recorded attempts play sequentially with player credits.
-- No console errors or warnings were captured in the tested teammate session.
+## Actual production entry checks
 
-## Limits of verification
+Started npm start on port5175 with DATABASE_PATH pointing at a nested folder under the Windows temporary directory.
 
-Desktop Chrome was tested on this machine. Mobile gameplay and cross-browser parity are not established. The spin presets have gameplay-rule feasibility tests; the end-to-end browser relay was tested with the basic jump preset at 14m and 20m. Hosting, internet sharing, video export, secure competition verification and external clip reconstruction are outside this release.
+- Health200, SPA arena fallback200, malformed JSON400, payload over2MB413, health still200.
+- Created a relay with a real browser-recorded attempt fixture:201.
+- Stopped/restarted the production listener with the same custom DATABASE_PATH.
+- Read the saved relay:200, same host name and waiting state. Nested database file exists.
+
+## Browser checks executed through normal controls
+
+- Original14m jump/fire succeeded; publication produced a relay URL.
+- Host refresh restored invitation and progress controls.
+- Home then Back restored that host workspace.
+- A fresh tab without the host session marker opened as guest, with settings locked.
+- Guest real jump/fire succeeded and completion opened the premiere URL.
+- Premiere showed both credits; playback automatically advanced from host to selected guest segment.
+- Host progress check opened the completed premiere.
+- Remix then Back restored premiere; Forward/Back restored navigation.
+- Proven14m changed to20m: sharing locked until another successful shot.
+- Missing invitation showed recovery; Enter Arena worked.
+- Stopped the dev server while SPA remained loaded, navigated to a saved relay, observed retryable failure; restarted and clicked Try Again. Saved premiere returned and old error cleared.
+- Default SQLite relay survived that dev-server restart.
+
+Screenshot: docs/team/browser-premiere.jpg. Browser viewport was narrow; this confirms the layout used in the walkthrough, not broad device parity.
+
+## Review fixes applied
+
+- Save the session host marker before discarding a stale publish response; keep UI/history generation guarded.
+- Completion409 performs guarded reload and shows completed premiere.
+- Route loading treats408/429 as retryable alongside network/5xx errors.
+- Server error middleware returns JSON400 for malformed JSON and413 for oversized payloads.
+- Configurable persistent SQLite location; default and explicit memory behavior retained.
+
+## Verification limits and follow-up
+
+Delayed-response races, disabled storage during a live browser publish, simultaneous browser guest completions, and browser-timed180/360 successes were not injected or executed. Spin feasibility is covered by gameplay rule tests; conflict behavior by API tests and source review. Pure navigation tests do not prove popstate wiring by themselves; browser navigation checks supplement them.
+
+Explicit databasePath:'' is a low-priority developer-option edge case deferred by Codex1; normal app startup uses the trimmed environment setting or default. Identical Home/New navigation can create duplicate history entries. Session markers are UI recovery hints, not authentication; duplicated tabs may inherit them. This is not a production competition service.
+
+No deployment, payment, main merge or push was performed as part of these checks.

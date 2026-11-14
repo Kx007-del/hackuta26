@@ -1,9 +1,21 @@
-import type { Express, Request, Response } from 'express';
+import type { ErrorRequestHandler, Express, Request, Response } from 'express';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { sameConfig, validConfig, type AttemptResult, type Relay, type ReplayFrame } from '../../shared/contracts';
+
+export const apiErrorHandler: ErrorRequestHandler = (error: unknown, _req, res, next) => {
+  if (res.headersSent) { next(error); return; }
+  const details = error !== null && typeof error === 'object'
+    ? error as { status?: unknown; type?: unknown } : {};
+  const malformedJson = details.status === 400 && details.type === 'entity.parse.failed';
+  const status = details.status === 413 ? 413 : malformedJson ? 400 : 500;
+  if (status === 500) console.error('Unhandled server request error.');
+  res.status(status).json({error: status === 413
+    ? 'Replay is too large. Try a shorter attempt.'
+    : malformedJson ? 'Invalid JSON request body.' : 'Something went wrong. Please retry.'});
+};
 
 class InputError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -42,7 +54,8 @@ export function validateAttempt(value: unknown): AttemptResult {
 
 /** Attempts are client-reported. These checks do not constitute competitive anti-cheat. */
 export function registerApi(app: Express, options: {databasePath?: string} = {}): () => void {
-  const file = options.databasePath ?? resolve('data/relays.sqlite');
+  const configuredFile = options.databasePath ?? (process.env.DATABASE_PATH?.trim() || resolve('data/relays.sqlite'));
+  const file = configuredFile === ':memory:' ? configuredFile : resolve(configuredFile);
   if (file !== ':memory:') mkdirSync(dirname(resolve(file)), {recursive: true});
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS relays (id TEXT PRIMARY KEY, payload TEXT NOT NULL)');

@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { registerApi } from "../packages/social/server";
+import { apiErrorHandler, registerApi } from "../packages/social/server";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
 app.disable("x-powered-by");
@@ -27,17 +27,7 @@ if (process.argv.includes("--production")) {
   });
   app.use(vite.middlewares);
 }
-app.use((error: any, _req: any, res: any, _next: any) => {
-  console.error(error.message);
-  res
-    .status(error.status === 413 ? 413 : 500)
-    .json({
-      error:
-        error.status === 413
-          ? "Replay is too large. Try a shorter attempt."
-          : "Something went wrong. Please retry.",
-    });
-});
+app.use(apiErrorHandler);
 const port = Number(process.env.PORT || 5173);
 const host = process.env.HOST || "127.0.0.1";
 const server = app.listen(port, host, () =>
