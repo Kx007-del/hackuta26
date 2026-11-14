@@ -10,6 +10,8 @@ Codex 1 coordinates ideas, architecture, roadmap, assignments, review dispositio
 
 Cycle: plan, review plan, propose implementation, coordinator application, independent tests, actual checks, review changes, owner revisions, integration. Keep owned paths separate. Shared interface and dependency changes go through Codex 1. Record handoffs in docs/team/.
 
+Permanent role folders are team/roles/ROLE/; read team/roles/README.md for ownership and isolation rules. Use your own complete worktree at ../agent-worktrees/ROLE/ and agents/ROLE branch as the starting point. Never edit or switch branches in another role's working folder. Each role records new handoffs in its own team/roles/ROLE/ folder; docs/team/ retains historical evidence. These folders and branch rules coordinate writes; they are not filesystem access controls.
+
 Feature development is PAUSED at human request. Read team/state.json and docs/MULTI-COMPUTER.md. Only coordination, setup and connectivity checks are authorized during this pause. Do not restart the old dispatcher.
 
 The original local message service dispatches read-only proposals, not edits or commands. Desktop applied reviewed proposals and executed checks; do not claim independent execution. For the new four-computer workflow use separate clones/worktrees, per-role GitHub tasks, topic branches and PR handoffs. GitHub is durable coordination, not an automatic cross-machine agent dispatcher. Keep account files, service credentials, logs and player data outside Git. Respect account limits.

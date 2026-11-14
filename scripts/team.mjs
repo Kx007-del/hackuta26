@@ -61,9 +61,10 @@ try {
     const remote = run('git', ['remote', 'get-url', 'origin']);
     if (!/github\.com[:/]Kx007-del\/hackuta26(?:\.git)?$/i.test(remote)) throw new Error('origin must be Kx007-del/hackuta26');
     run('git', ['fetch', 'origin']);
-    const target = resolve(root, '..', `hackuta26-${role}`);
+    const target = resolve(root, '..', 'agent-worktrees', role);
     if (existsSync(target)) throw new Error(`Folder already exists; inspect it instead of overwriting: ${target}`);
-    run('git', ['worktree', 'add', '-b', `station/${role}`, target, `origin/${state.integrationBranch}`]);
+    mkdirSync(dirname(target), { recursive: true });
+    run('git', ['worktree', 'add', '-b', `agents/${role}`, target, `origin/${state.integrationBranch}`]);
     console.log(`Prepared ${target}\nOpen that folder in your agent. Run npm ci there. Feature work remains ${state.status}.`);
   } else if (command === 'login') {
     const agent = identity();

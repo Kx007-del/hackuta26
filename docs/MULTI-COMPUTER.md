@@ -81,7 +81,9 @@ node scripts/team.mjs doctor codex-2
 node scripts/team.mjs prepare codex-2
 ```
 
-Prepare fetches GitHub and creates a separate sibling worktree named hackuta26-codex-2 on branch station/codex-2. It never overwrites an existing folder or branch. Open the printed folder in your agent/editor, then run npm ci there. Each role has its own worktree and node_modules. Do not use the same branch from two computers simultaneously.
+Prepare fetches GitHub and creates a separate worktree at ../agent-worktrees/codex-2 on branch agents/codex-2. It never overwrites an existing folder or branch. Open the printed folder in your agent/editor, then run npm ci there. Each role has its own complete source tree, Git index and node_modules. Do not use the same branch from two computers simultaneously. This computer already has all five folders under agent-worktrees; open those existing folders instead of preparing them again. The earlier hackuta26-codex-1 and hackuta26-claude-1 sibling folders are older onboarding copies; use agent-worktrees for the permanent role workspaces.
+
+See [role folders and ownership](../team/roles/README.md). These tracked role folders hold assignments and handoffs. Actual application files stay in their existing build paths; isolated worktrees prevent agents from editing the same working copy. Worktrees prevent direct file interference, but overlapping changes can still conflict during integration, so the owned-path rules remain necessary.
 
 ## Separate account profiles
 
