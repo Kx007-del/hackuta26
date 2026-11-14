@@ -1,0 +1,43 @@
+[
+  {
+    "role": "codex-1",
+    "enabled": true,
+    "lastSuccessfulTurn": "2026-11-14T22:44:54.101Z",
+    "returnedSuccessfully": true,
+    "reportedModels": []
+  },
+  {
+    "role": "codex-2",
+    "enabled": true,
+    "lastSuccessfulTurn": "2026-11-14T22:37:35.359Z",
+    "returnedSuccessfully": true,
+    "reportedModels": []
+  },
+  {
+    "role": "codex-3",
+    "enabled": true,
+    "lastSuccessfulTurn": "2026-11-14T22:34:39.976Z",
+    "returnedSuccessfully": true,
+    "reportedModels": []
+  },
+  {
+    "role": "claude-1",
+    "enabled": true,
+    "lastSuccessfulTurn": "2026-11-14T22:43:06.938Z",
+    "returnedSuccessfully": true,
+    "requestedModel": "claude-opus-5-5",
+    "reportedModels": [
+      "claude-opus-5-5"
+    ]
+  },
+  {
+    "role": "claude-2",
+    "enabled": true,
+    "lastSuccessfulTurn": "2026-11-14T22:43:06.173Z",
+    "returnedSuccessfully": true,
+    "requestedModel": "claude-opus-5-5",
+    "reportedModels": [
+      "claude-opus-5-5"
+    ]
+  }
+]
