@@ -1,0 +1,15 @@
+{
+  "status": "paused",
+  "reason": "Human requested feature development paused for four-computer onboarding.",
+  "repository": "Kx007-del/hackuta26",
+  "integrationBranch": "build/five-agent-h26",
+  "coordinator": "codex-1",
+  "claudeModel": "claude-opus-5-5",
+  "roles": {
+    "codex-1": { "computer": "Windows 1 (this computer)", "scope": "Planning, contracts, roadmap, integration and final decisions among agents" },
+    "codex-2": { "computer": "Windows 2", "scope": "Backend, server, persistence and non-UI implementation" },
+    "codex-3": { "computer": "Windows 3", "scope": "Frontend, graphics, controls and gameplay implementation" },
+    "claude-1": { "computer": "Windows 1 (separate profile and worktree)", "scope": "Independent plan, diff and brand review; no author edits" },
+    "claude-2": { "computer": "Mac", "scope": "Independent tests, edge cases, regression and browser validation" }
+  }
+}

@@ -2,6 +2,8 @@
 
 Three original, game-inspired browser environments with reference clip uploads, guided recreation, harder remixes, two-person relays and recorded squad replays.
 
+**Feature development is paused.** For the three-Windows/one-Mac, five-agent setup, start with [Multi-computer instructions](docs/MULTI-COMPUTER.md). The shared state is [team/state.json](team/state.json).
+
 | Game inspiration | Environment | Playable mechanics |
 | --- | --- | --- |
 | Call of Duty | Military rooftop | Sniper silhouette, aim down sights, jump, 180/360 spin shots |

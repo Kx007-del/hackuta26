@@ -10,8 +10,10 @@ Codex 1 coordinates ideas, architecture, roadmap, assignments, review dispositio
 
 Cycle: plan, review plan, propose implementation, coordinator application, independent tests, actual checks, review changes, owner revisions, integration. Keep owned paths separate. Shared interface and dependency changes go through Codex 1. Record handoffs in docs/team/.
 
-Use the existing five signed-in profiles and local message service. It dispatches read-only proposals, not edits or commands. Desktop applies reviewed proposals and executes checks. Do not claim independent agent execution. Keep account files, service credentials, logs and player data outside Git. Respect account limits.
+Feature development is PAUSED at human request. Read team/state.json and docs/MULTI-COMPUTER.md. Only coordination, setup and connectivity checks are authorized during this pause. Do not restart the old dispatcher.
 
-User authorized this local build and creation of Kx007-del/hackuta26. Pushes, main merges and deployment still require explicit approval. Use an integration branch. Keep old hackuta and faze-run-it-back repositories unchanged.
+The original local message service dispatches read-only proposals, not edits or commands. Desktop applied reviewed proposals and executed checks; do not claim independent execution. For the new four-computer workflow use separate clones/worktrees, per-role GitHub tasks, topic branches and PR handoffs. GitHub is durable coordination, not an automatic cross-machine agent dispatcher. Keep account files, service credentials, logs and player data outside Git. Respect account limits.
+
+User authorized the local build, repository creation, and now publishing the reviewed build and multi-computer setup to Kx007-del/hackuta26 so the five roles can work through GitHub. This authorizes the setup upload on build/five-agent-h26, not future unrestricted pushes. Main merges and deployment still require explicit approval. Keep old hackuta and faze-run-it-back repositories unchanged.
 
 Read docs/ROADMAP.md and shared/contracts.ts. Current H26-2 scope: clip upload/preview/trim, original Rooftop/Buildyard/Courtyard environments, mode-specific jump/spin/build/edit/stationary/dash proof, harder remixes, two-person relay and sequential replays. Read docs/H26-2-PLAN.md. Only toolkit Source/Anton fonts and supplied FaZe logos; preserve provenance. No automatic video reconstruction or anti-cheat claims. Balance substantive work across all three Codex and two Claude profiles; both Claude profiles are pinned to claude-opus-5-5.
