@@ -10,9 +10,9 @@ The saved agreement in the original “Set up four-agent coding workflow” chat
 | --- | --- | --- |
 | Windows 1: current computer | Codex 1 | Approved plan, contracts, bounded tasks, integration and final disposition |
 | Windows 1: separate profile and worktree | Claude 1, Opus 5.5 | Independent plan review, exact-diff review, brand audit and findings |
-| Windows 2 | Codex 2 | Backend/server/persistence implementation and handoff |
+| Mac | Codex 2 | Backend/server/persistence implementation and handoff |
 | Windows 3 | Codex 3 | Frontend, graphics, controls and gameplay implementation and handoff |
-| Mac | Claude 2, Opus 5.5 | Independent tests, edge cases, regressions and browser evidence |
+| Windows 2 | Claude 2, Opus 5.5 | Independent tests, edge cases, regressions and browser evidence |
 
 The human outranks every agent. Codex 1 has final say among agents. Balance meaningful effort, not message count: give each role a concrete deliverable, size it small/medium/large, and split large assignments before the next milestone. Reviews and tests are substantial work; do not change their roles into extra feature authors merely to equalize commits. Codex 2 and Codex 3 may clarify interfaces directly, with the decision recorded for Codex 1.
 
@@ -36,14 +36,14 @@ gh auth setup-git
 gh repo view Kx007-del/hackuta26
 ```
 
-Install Codex on the three Windows computers:
+Install Codex on Windows 1, Windows 3 and the Mac:
 
 ```text
 npm install -g @openai/codex
 codex --version
 ```
 
-Install Claude Code on Windows 1 and the Mac using the official installer or:
+Install Claude Code on Windows 1 and Windows 2 using the official installer or:
 
 ```text
 npm install -g @anthropic-ai/claude-code
@@ -74,7 +74,7 @@ cd hackuta26
 
 Windows 1 already has a checkout; do not clone over it. It may continue using its current local checkout for onboarding. A later move outside OneDrive should be a fresh clone after all changes are committed, not a cloud-synced copy of .git.
 
-Choose your assigned role below. Commands use codex-2 as an example; substitute codex-3 on Windows 3, claude-2 on Mac, and codex-1 or claude-1 on Windows 1.
+Choose your assigned role below. Commands use codex-2 on the Mac as an example; substitute codex-3 on Windows 3, claude-2 on Windows 2, and codex-1 or claude-1 on Windows 1.
 
 ```text
 node scripts/team.mjs doctor codex-2
@@ -95,10 +95,10 @@ node scripts/team.mjs prompt codex-2
 
 Login stores provider state outside Git under ~/.hackuta26/profiles/ROLE. It signs in only; it does not dispatch feature work. The prompt command prints the role's onboarding instructions for you to paste into the agent. On Windows 1, existing verified profiles remain untouched; the portable login is a separate sign-in if you choose to migrate. Do not sign out an existing account to activate a different role.
 
-For agent sessions to use that same portable profile, set the environment in that terminal before opening the agent. Windows example for Codex 2:
+For agent sessions to use that same portable profile, set the environment in that terminal before opening the agent. Windows example for Codex 3:
 
 ```powershell
-$env:CODEX_HOME=Join-Path $HOME '.hackuta26/profiles/codex-2'
+$env:CODEX_HOME=Join-Path $HOME '.hackuta26/profiles/codex-3'
 codex
 ```
 
@@ -109,11 +109,18 @@ $env:CLAUDE_CONFIG_DIR=Join-Path $HOME '.hackuta26/profiles/claude-1'
 claude --model claude-opus-5-5
 ```
 
-Mac example for Claude 2:
+Windows example for Claude 2:
+
+```powershell
+$env:CLAUDE_CONFIG_DIR=Join-Path $HOME '.hackuta26/profiles/claude-2'
+claude --model claude-opus-5-5
+```
+
+Mac example for Codex 2:
 
 ```bash
-export CLAUDE_CONFIG_DIR="$HOME/.hackuta26/profiles/claude-2"
-claude --model claude-opus-5-5
+export CODEX_HOME="$HOME/.hackuta26/profiles/codex-2"
+codex
 ```
 
 Paste the generated onboarding prompt. Both Claude sessions must confirm their actual model using /status. Opus 5.5 is pinned by the launch command and durable team instructions; do not substitute another model if unavailable. [Official model configuration](https://support.claude.com/en/articles/11940350-claude-code-model-configuration).
@@ -126,7 +133,7 @@ Use the repository's onboarding issue as the shared attendance record. Each role
 
 ```text
 Role: codex-2
-Machine: Windows 2
+Machine: Mac
 Repository: Kx007-del/hackuta26 accessible
 Checkout SHA: [git rev-parse HEAD]
 Working tree: [git status --short; clean or describe changes]
@@ -149,7 +156,7 @@ Codex 1 checks the five reports, asks one narrow backend/frontend interface ques
 1. Codex 1 opens one bounded issue per deliverable using the agent-task template: exact base SHA, approved roadmap, owned paths, dependencies, interfaces, acceptance criteria and checks. Claude 1 reviews the plan before dependent implementation. Keep shared contracts with Codex 1.
 2. Each author starts a fresh task branch from the specified integration commit. Example: git fetch origin, then git switch -c work/codex-2/ISSUE-short-name BASE_SHA. No two roles edit the same task branch. Claude 2 gets a separate test branch from the implementation SHA under test.
 3. Authors commit, and with push authorization publish their topic branch and open a draft PR against build/five-agent-h26. Use the PR template. Link the issue and handoff recipient. Avoid copying large source files into messages. Never force-push another role's branch.
-4. Claude 2 tests the actual implementation SHA and records commands/results, failure cases and regression-test commit. For gameplay changes, also report actual browser steps and observed result. A static read is not a browser test. To run the site locally: npm ci, npm run dev, then the local URL printed by the server. The Mac adds platform coverage; it is not a replacement for Windows verification.
+4. Claude 2 tests the actual implementation SHA on Windows 2 and records commands/results, failure cases and regression-test commit. For gameplay changes, also report actual browser steps and observed result. A static read is not a browser test. To run the site locally: npm ci, npm run dev, then the local URL printed by the server. Codex 2 also checks backend behavior on the Mac when platform compatibility matters.
 5. Claude 1 reviews the actual final diff at the tested head SHA and posts findings with file/line references. An author cannot approve their own work by posting as the reviewer. Role names are labels in GitHub, not five GitHub user identities; if everyone shares one GitHub login, comments document the roles but do not provide independent GitHub approval enforcement.
 6. Owners fix findings; checks and review repeat when the head changes. Codex 1 integrates only the reviewed/tested commits after required human approvals. Main merges and deployment remain separate explicit human decisions. Do not enable automatic merging or deployment as part of onboarding.
 
