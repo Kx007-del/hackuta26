@@ -1,8 +1,9 @@
+import { ARENAS, type ArenaId } from '../shared/contracts';
 export type RelayRoute = { screen: 'relay' | 'premiere'; id: string };
 
 export type Route =
   | { screen: 'home' }
-  | { screen: 'arena'; parentId?: string }
+  | { screen: 'arena'; parentId?: string; arenaId?: ArenaId }
   | RelayRoute
   | { screen: 'invalid' };
 
@@ -18,6 +19,9 @@ export function parseRoute(search: string): Route {
   const screens = params.getAll('screen');
   const parents = params.getAll('parent');
   const screen = screens[0];
+  const arenas = params.getAll('arena');
+  if (arenas.length > 1 || (arenas.length && !ARENAS.some(a => a.id === arenas[0]))) return { screen: 'invalid' };
+  const arenaId = arenas[0] as ArenaId | undefined;
 
   if (screens.length > 1) return { screen: 'invalid' };
   if (ids.length) {
@@ -29,9 +33,9 @@ export function parseRoute(search: string): Route {
     return { screen: screen === 'premiere' ? 'premiere' : 'relay', id };
   }
   if (screen === 'arena') {
-    if (!parents.length) return { screen: 'arena' };
+    if (!parents.length) return { screen: 'arena', ...(arenaId ? {arenaId} : {}) };
     if (parents.length === 1 && validId(parents[0])) {
-      return { screen: 'arena', parentId: parents[0] };
+      return { screen: 'arena', parentId: parents[0], ...(arenaId ? {arenaId} : {}) };
     }
     return { screen: 'invalid' };
   }
@@ -45,9 +49,9 @@ export function routeSearch(route: Exclude<Route, { screen: 'invalid' }>): strin
     case 'home':
       return '';
     case 'arena':
-      return route.parentId
+      return (route.parentId
         ? `?screen=arena&parent=${encodeURIComponent(route.parentId)}`
-        : '?screen=arena';
+        : '?screen=arena') + (route.arenaId ? `&arena=${route.arenaId}` : '');
     case 'relay':
       return `?relay=${encodeURIComponent(route.id)}`;
     case 'premiere':

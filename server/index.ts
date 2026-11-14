@@ -2,14 +2,16 @@ import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { apiErrorHandler, registerApi } from "../packages/social/server";
+import { registerClipApi } from "../packages/social/clips";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
 app.disable("x-powered-by");
+const clips = registerClipApi(app);
 app.use(express.json({ limit: "2mb" }));
 app.get("/api/health", (_req, res) =>
   res.json({ ok: true, service: "run-it-back" }),
 );
-const cleanup = registerApi(app);
+const cleanup = registerApi(app, { clipLookup: clips.get });
 app.use("/api", (_req, res) =>
   res.status(404).json({ error: "Unknown API route" }),
 );
@@ -37,6 +39,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.on(signal, () =>
     server.close(() => {
       cleanup();
+      clips.close();
       process.exit(0);
     }),
   );

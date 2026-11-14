@@ -1,0 +1,35 @@
+{
+  "sourceFolder": "https://drive.google.com/drive/folders/1psDncTeLcDKOevLuHOMkGzt_BeA1jzr-",
+  "evidence": [
+    {
+      "asset": "public\\brand\\Anton-Regular.woff2",
+      "source": "assets\\brand-source\\fonts\\General Use Fonts\\WOFF Files\\fonts\\Anton-Regular.woff2",
+      "sha256": "32140ef15354af4dd879fa52f13dd348c0e50e2aea49809f9b28861ca730dc4d"
+    },
+    {
+      "asset": "public\\brand\\logo.png",
+      "source": "assets\\brand-source\\logos\\Logos\\PNG\\No Stroke\\FaZe_NoStroke_On Dark.png",
+      "sha256": "ea0d433221168e058f917b3e5ab9c3f70bf7d731ec11ac12e5449eba00fe99ed"
+    },
+    {
+      "asset": "public\\brand\\SourceSansPro-Bold.woff2",
+      "source": "assets\\brand-source\\fonts\\General Use Fonts\\WOFF Files\\fonts\\SourceSansPro-Bold.woff2",
+      "sha256": "a4e263ebafc7b7a63b4d178ba3c719e75bb53dc2f2eb5d52c86688c1b88a2b02"
+    },
+    {
+      "asset": "public\\brand\\SourceSansPro-Regular.woff2",
+      "source": "assets\\brand-source\\fonts\\General Use Fonts\\WOFF Files\\fonts\\SourceSansPro-Regular.woff2",
+      "sha256": "a597da6775919c222b41a65082884c616fa6a0c8a2046820fd73572c8f193e60"
+    },
+    {
+      "asset": "public\\brand\\tiger-grey.jpg",
+      "source": "assets\\brand-source\\patterns\\FaZe Tiger Camo\\FaZe_Tiger_Camo_WhiteGrey.jpg",
+      "sha256": "44fd966ca4f32da7d039f9ec53c9572b7a2c127fa1e8def84507e12f75f8213b"
+    },
+    {
+      "asset": "public\\brand\\tiger-red.jpg",
+      "source": "assets\\brand-source\\patterns\\FaZe Tiger Camo\\FaZe_Tiger_Camo_RedBlack.jpg",
+      "sha256": "a8b632a57a1ff9c9006f4006f146d8795fe7ed7c9403dc6ca9fedcfca5a702da"
+    }
+  ]
+}

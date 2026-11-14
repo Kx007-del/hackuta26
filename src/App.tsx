@@ -1,6 +1,8 @@
 import { canonicalRelayRoute, hasHostMarker, parseRoute, rememberHost, routeSearch, type Route } from './navigation';
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import ChallengeBuilder from "../packages/challenges/ChallengeBuilder";
+import EnvironmentPicker from './components/EnvironmentPicker';
+import ClipWorkbench from './components/ClipWorkbench';
 import {
   ApiError,
   createRelay,
@@ -9,6 +11,7 @@ import {
 } from "../packages/social/client";
 import {
   DEFAULT_CONFIG,
+  ARENAS, configForArena, validConfig,
   sameConfig,
   type ChallengeConfig,
   type AttemptResult,
@@ -57,10 +60,10 @@ function ArenaArtwork() {
       <circle cx="522" cy="218" r="5" fill="#e4002b" />
       <path d="M310 191h40m-20-20v40" stroke="white" opacity=".6" />
       <path d="M160 377l20-30 38 8-20 30z" fill="#d10028" />
-      <text x="50" y="65" fill="#c2bec3" fontSize="11" fontFamily="monospace">
+      <text x="50" y="65" fill="#c2bec3" fontSize="11" fontFamily="Source">
         35° 42′ N / ROOFTOP TRAINING FACILITY
       </text>
-      <text x="50" y="438" fill="white" fontSize="12" fontFamily="monospace">
+      <text x="50" y="438" fill="white" fontSize="12" fontFamily="Source">
         ORIGINAL ARENA / BROWSER PLAYABLE
       </text>
     </svg>
@@ -79,6 +82,7 @@ export default function App() {
     }
   });
   const [busy, setBusy] = useState(false);
+  const [clipBusy, setClipBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
@@ -114,6 +118,10 @@ export default function App() {
       // The current form can still use the name in memory.
     }
   }, [name]);
+  useEffect(() => {
+    if (screen !== 'arena' || relay || routePending) return;
+    try { sessionStorage.setItem(`rib-draft:${config.arenaId}`, JSON.stringify(config)); } catch {}
+  }, [screen, relay, routePending, config]);
 
   function writeRoute(route: Exclude<Route, { screen: 'invalid' }>, mode: 'push' | 'replace') {
     const url = `/${routeSearch(route)}`;
@@ -133,7 +141,15 @@ export default function App() {
     setHost(false);
     setAttempt(null);
     setReplayIndex(null);
-    setConfig(remixConfig ?? DEFAULT_CONFIG);
+    let restored: ChallengeConfig | undefined;
+    if (restoring && route.screen === 'arena' && !route.parentId) {
+      const arenaId = route.arenaId ?? DEFAULT_CONFIG.arenaId;
+      try {
+        const saved: unknown = JSON.parse(sessionStorage.getItem(`rib-draft:${arenaId}`) || 'null');
+        if (validConfig(saved) && saved.arenaId === arenaId) restored = saved;
+      } catch {}
+    }
+    setConfig(remixConfig ?? restored ?? (route.screen === 'arena' && route.arenaId ? configForArena(route.arenaId) : DEFAULT_CONFIG));
     setSourceRelay(route.screen === 'arena' ? route.parentId : undefined);
     setRoutePending(false);
     setRouteFailure(null);
@@ -194,6 +210,7 @@ export default function App() {
   function changeConfig(c: ChallengeConfig) {
     if (activeRequest.current !== null || relay) return;
     setConfig(c);
+    if (c.arenaId !== config.arenaId) { setSourceRelay(undefined); writeRoute({screen: 'arena', arenaId: c.arenaId}, 'replace'); }
     setAttempt(null);
     setNotice('');
   }
@@ -208,7 +225,7 @@ export default function App() {
   }
 
   function newChallenge() {
-    navigate({ screen: 'arena' });
+    navigate({ screen: 'arena', arenaId: config.arenaId }, configForArena(config.arenaId));
   }
 
   function retryRoute() {
@@ -236,7 +253,7 @@ export default function App() {
   }
 
   async function publish() {
-    if (screen !== 'arena' || activeRequest.current !== null || !attempt || !proven) return;
+    if (screen !== 'arena' || clipBusy || activeRequest.current !== null || !attempt || !proven) return;
     if (!name.trim()) {
       setError('Add your player name before passing the shot.');
       return;
@@ -337,6 +354,7 @@ export default function App() {
   }
 
   const guest = screen === 'relay' && !!relay && !host;
+  const arenaInfo = ARENAS.find(a => a.id === config.arenaId)!;
   const replayAttempt =
     replayIndex === 0
       ? relay?.hostAttempt
@@ -395,12 +413,12 @@ export default function App() {
                 PLAY <span>ITSELF.</span>
               </h1>
               <p>
-                Iconic energy. Your shot. Recreate a trickshot, put your own
-                spin on it, and pass the challenge to your squad.
+                Bring a Call of Duty, Fortnite, or Valorant clip. Recreate its
+                moment in a game-inspired arena, raise the bar, and pass it to your squad.
               </p>
               <div className="hero-actions">
                 <button className="primary" onClick={newChallenge}>
-                  RUN IT BACK <Arrow />
+                  BRING YOUR CLIP <Arrow />
                 </button>
                 <a className="text-link" href="#how-it-works">
                   HOW IT WORKS <span>↓</span>
@@ -415,7 +433,7 @@ export default function App() {
             <div className="hero-visual">
               <div className="visual-heading">
                 <span>
-                  <i /> ARENA 001
+                  <i /> THREE WORLDS / ONE SQUAD
                 </span>
                 <span>READY WHEN YOU ARE ↗</span>
               </div>
@@ -439,10 +457,13 @@ export default function App() {
                 </button>
               </div>
               <div className="visual-meta">
-                <span>JUMP / SPIN / LAND IT</span>
-                <span>01 — 03 PRESETS</span>
+                <span>WATCH / RECREATE / RAISE THE BAR</span>
+                <span>COD / FORTNITE / VALORANT</span>
               </div>
             </div>
+          </section>
+          <section className="home-worlds">
+            <EnvironmentPicker config={config} onChange={c => navigate({screen:'arena', arenaId:c.arenaId}, c)} />
           </section>
           <div className="ticker" aria-hidden="true">
             <span>WATCH IT.</span>
@@ -477,13 +498,13 @@ export default function App() {
                 {
                   n: "01",
                   title: "MAKE THE SHOT",
-                  text: "Enter an original browser arena. Jump, aim, and land your first trickshot.",
+                  text: "Choose your world. Upload a clip, pick its defining moment, and recreate the action.",
                   icon: "⌖",
                 },
                 {
                   n: "02",
                   title: "RAISE THE BAR",
-                  text: "Add a rotation or push the distance. Complete your remix before you pass it.",
+                  text: "Add a spin, build and edit, or dash from cover. Prove your harder version before passing it.",
                   icon: "↻",
                 },
                 {
@@ -530,7 +551,7 @@ export default function App() {
                   ? "YOUR SQUAD / YOUR MOMENT"
                   : guest
                     ? "PASS THE PLAY / LEG 02"
-                    : "THE ROOFTOP / ORIGINAL ARENA"}
+                    : `${arenaInfo.game} / ${arenaInfo.title}`}
               </div>
               <h1>
                 {screen === "premiere"
@@ -557,6 +578,10 @@ export default function App() {
               {notice}
             </div>
           )}
+          {!routePending && !routeFailure && <>
+            <EnvironmentPicker config={config} onChange={changeConfig} locked={busy || clipBusy || !!relay || screen === 'premiere'} />
+            <ClipWorkbench config={config} onChange={changeConfig} onBusyChange={setClipBusy} locked={busy || !!relay || screen === 'premiere'} />
+          </>}
           {routePending ? (
             <div className="loading" role="status">
               {screen === 'arena' ? 'LOADING THE REMIX…' : 'LOADING YOUR SQUAD’S SHOT…'}
@@ -668,11 +693,11 @@ export default function App() {
                   <span>
                     <i /> {replayAttempt ? "TEAMMATE REPLAY" : "LIVE PRACTICE"}
                   </span>
-                  <span>ROOFTOP / VOL. 01</span>
+                  <span>{arenaInfo.game} / {arenaInfo.title}</span>
                 </div>
                 <Suspense
                   fallback={
-                    <div className="loading">PREPARING THE ROOFTOP…</div>
+                    <div className="loading">PREPARING THE ARENA…</div>
                   }
                 >
                   <GameArena
@@ -723,9 +748,7 @@ export default function App() {
                 <div className="tip-panel">
                   <span>THE PLAYBOOK</span>
                   <p>
-                    Start with The Original. Jump and aim at the center of the
-                    target. Once you’ve landed it, add a rotation or increase
-                    the distance to make it your own.
+                    {config.arenaId === 'rooftop-v1' ? 'Jump, spin and land your sniper shot. Raise the distance or rotation to challenge your squad.' : config.arenaId === 'buildyard-v1' ? 'Build a ramp or wall, edit your opening, then land your airborne shot. Build your version of the reference moment.' : 'Settle your movement for a precision shot, or dash from cover before stopping and firing. Raise the distance after you prove it.'}
                   </p>
                 </div>
               </section>
@@ -749,7 +772,7 @@ export default function App() {
                   {guest ? (
                     <button
                       className="primary full"
-                      disabled={!proven || busy}
+                      disabled={!proven || busy || clipBusy}
                       onClick={finishRelay}
                     >
                       {busy ? "SAVING…" : "FINISH THE RELAY"} <Arrow />
@@ -777,7 +800,7 @@ export default function App() {
                   ) : (
                     <button
                       className="primary full"
-                      disabled={!proven || busy}
+                      disabled={!proven || busy || clipBusy}
                       onClick={publish}
                     >
                       {busy ? "CREATING RELAY…" : "PASS THE PLAY"} <Arrow />

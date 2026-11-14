@@ -3,7 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { sameConfig, validConfig, type AttemptResult, type Relay, type ReplayFrame } from '../../shared/contracts';
+import { sameConfig, validConfig, mechanicSatisfied, type MechanicState, type ClipReference, type AttemptResult, type Relay, type ReplayFrame } from '../../shared/contracts';
 
 export const apiErrorHandler: ErrorRequestHandler = (error: unknown, _req, res, next) => {
   if (res.headersSent) { next(error); return; }
@@ -30,30 +30,46 @@ function identifier(value: unknown): string {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(value)) throw new InputError('Invalid identifier.');
   return value;
 }
+const count = (v: unknown): v is number => bounded(v, 0, 30) && Number.isInteger(v);
 export function validateAttempt(value: unknown): AttemptResult {
   if (!record(value) || !validConfig(value.config)) throw new InputError('Invalid challenge settings.');
   const config = value.config;
-  if (value.success !== true || value.targetHit !== true || value.airborneAtShot !== true || !bounded(value.rotationDegrees, config.requiredSpinDegrees, 3600)) throw new InputError('Complete the airborne shot and required rotation before sharing.');
+  let mechanicState: MechanicState | undefined;
+  if (value.mechanicState !== undefined) {
+    const s = value.mechanicState;
+    if (!record(s) || !count(s.builds) || !count(s.dashes) || !bounded(s.speedAtShot, 0, 100) || (s.edited !== undefined && typeof s.edited !== 'boolean')) throw new InputError('Invalid mechanic state.');
+    mechanicState = { builds: s.builds, dashes: s.dashes, speedAtShot: s.speedAtShot, ...(s.edited === undefined ? {} : { edited: s.edited }) };
+  }
+  if (value.success !== true || value.targetHit !== true || typeof value.airborneAtShot !== 'boolean' || !bounded(value.rotationDegrees, config.requiredSpinDegrees, 3600) || !mechanicSatisfied(config, mechanicState, value.airborneAtShot)) throw new InputError('Complete the required shot and mechanics before sharing.');
   if (!bounded(value.durationMs, 1, 60000) || !bounded(value.shotTimeMs, 0, value.durationMs)) throw new InputError('Invalid attempt timing.');
   if (!Array.isArray(value.frames) || value.frames.length < 2 || value.frames.length > 2000) throw new InputError('Replay must contain between 2 and 2000 frames.');
+  const durationMs = value.durationMs;
   let previousTime = -1;
   const frames: ReplayFrame[] = value.frames.map((frame: unknown) => {
-    if (!record(frame) || !bounded(frame.t, 0, value.durationMs as number) || frame.t < previousTime ||
-        !bounded(frame.x, -10000, 10000) || !bounded(frame.y, -10000, 10000) || !bounded(frame.z, -10000, 10000) ||
-        !bounded(frame.yaw, -1000000, 1000000) || !bounded(frame.pitch, -10, 10)) throw new InputError('Invalid replay frames.');
+    if (!record(frame) || !bounded(frame.t, 0, durationMs) || frame.t < previousTime || !bounded(frame.x, -10000, 10000) || !bounded(frame.y, -10000, 10000) || !bounded(frame.z, -10000, 10000) || !bounded(frame.yaw, -1000000, 1000000) || !bounded(frame.pitch, -10, 10) || (frame.builds !== undefined && !count(frame.builds)) || (frame.dashes !== undefined && !count(frame.dashes)) || (frame.edited !== undefined && typeof frame.edited !== 'boolean')) throw new InputError('Invalid replay frames.');
     previousTime = frame.t;
-    return {t: frame.t, x: frame.x, y: frame.y, z: frame.z, yaw: frame.yaw, pitch: frame.pitch};
+    return { t: frame.t, x: frame.x, y: frame.y, z: frame.z, yaw: frame.yaw, pitch: frame.pitch, ...(frame.builds === undefined ? {} : { builds: frame.builds as number }), ...(frame.dashes === undefined ? {} : { dashes: frame.dashes as number }), ...(frame.edited === undefined ? {} : { edited: frame.edited as boolean }) };
   });
   return {
     id: identifier(value.id),
-    config: {schemaVersion: 1, arenaId: 'rooftop-v1', templateId: config.templateId, targetDistance: config.targetDistance, requiredSpinDegrees: config.requiredSpinDegrees},
-    success: true, targetHit: true, airborneAtShot: true,
-    rotationDegrees: value.rotationDegrees, durationMs: value.durationMs, frames, shotTimeMs: value.shotTimeMs,
+    config: { schemaVersion: 1, arenaId: config.arenaId, templateId: config.templateId, targetDistance: config.targetDistance, requiredSpinDegrees: config.requiredSpinDegrees, ...(config.referenceClipId === undefined ? {} : { referenceClipId: config.referenceClipId }) },
+    success: true, targetHit: true, airborneAtShot: value.airborneAtShot,
+    rotationDegrees: value.rotationDegrees, durationMs, frames, shotTimeMs: value.shotTimeMs,
+    ...(mechanicState === undefined ? {} : { mechanicState }),
   };
 }
 
 /** Attempts are client-reported. These checks do not constitute competitive anti-cheat. */
-export function registerApi(app: Express, options: {databasePath?: string} = {}): () => void {
+export function registerApi(app: Express, options: {databasePath?: string; clipLookup?: (id: string) => ClipReference | undefined} = {}): () => void {
+  const normalizeAttempt = (input: unknown): AttemptResult => {
+    const attempt = validateAttempt(input);
+    const id = attempt.config.referenceClipId;
+    if (id !== undefined) {
+      const clip = options.clipLookup?.(id);
+      if (!clip || clip.id !== id || clip.arenaId !== attempt.config.arenaId) throw new InputError('Reference clip is missing or belongs to another environment.');
+    }
+    return attempt;
+  };
   const configuredFile = options.databasePath ?? (process.env.DATABASE_PATH?.trim() || resolve('data/relays.sqlite'));
   const file = configuredFile === ':memory:' ? configuredFile : resolve(configuredFile);
   if (file !== ':memory:') mkdirSync(dirname(resolve(file)), {recursive: true});
@@ -76,7 +92,7 @@ export function registerApi(app: Express, options: {databasePath?: string} = {})
   app.post('/api/relays', handle((req, res) => {
     if (!record(req.body)) throw new InputError('Invalid request.');
     const hostName = name(req.body.hostName);
-    const hostAttempt = validateAttempt(req.body.hostAttempt);
+    const hostAttempt = normalizeAttempt(req.body.hostAttempt);
     const parentChallengeId = req.body.parentChallengeId === undefined ? undefined : identifier(req.body.parentChallengeId);
     if (parentChallengeId) get(parentChallengeId);
     const relay: Relay = {id: randomUUID(), challenge: hostAttempt.config, hostName, hostAttempt, createdAt: new Date().toISOString(), status: 'waiting', ...(parentChallengeId ? {parentChallengeId} : {})};
@@ -88,7 +104,7 @@ export function registerApi(app: Express, options: {databasePath?: string} = {})
     if (!record(req.body)) throw new InputError('Invalid request.');
     const relay = get(identifier(req.params.id));
     const guestName = name(req.body.guestName);
-    const guestAttempt = validateAttempt(req.body.guestAttempt);
+    const guestAttempt = normalizeAttempt(req.body.guestAttempt);
     if (!sameConfig(relay.challenge, guestAttempt.config)) throw new InputError('Play the exact challenge attached to this invitation.');
     if (guestAttempt.id === relay.hostAttempt.id) throw new InputError('The guest must submit a new attempt.');
     if (relay.status === 'completed') {

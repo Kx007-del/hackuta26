@@ -1,12 +1,18 @@
-# Hackuta26: FaZe Run It Back
+# Hackuta26 — FaZe Run It Back
 
-Private project: https://github.com/Kx007-del/hackuta26
+Three original, game-inspired browser environments with reference clip uploads, guided recreation, harder remixes, two-person relays and recorded squad replays.
 
-A playable original rooftop trickshot arena: prove a remix, invite a friend, and watch both recorded attempts. Based on Kx007-del/faze-run-it-back at 3f66407f09880c445239f1c95858d6c73f449a30, using its supplied FaZe brand toolkit. Source asset ownership remains unchanged.
+| Game inspiration | Environment | Playable mechanics |
+| --- | --- | --- |
+| Call of Duty | Military rooftop | Sniper silhouette, aim down sights, jump, 180/360 spin shots |
+| Fortnite | Bright low-poly Buildyard | Place ramp, walk/jump from it, build and edit wall, shoot through opening |
+| Valorant | Tactical Courtyard | Grounded stationary precision, cover collision, dash out and settle before firing |
 
-## Run locally (PowerShell)
+These are original practice arenas, not copies of real game maps. Clip recreation is guided: the player selects the moment, mechanic and distance. Video is not automatically reconstructed or analyzed by AI.
 
-Requires Node 22.13+ and npm. From this checkout:
+## Start locally in PowerShell
+
+Requires Node 22.13+ and npm:
 
 ```powershell
 npm ci
@@ -14,39 +20,50 @@ $env:PORT='5174'
 npm run dev
 ```
 
-Open http://127.0.0.1:5174. The earlier reference project may still use port 5173. No external keys or database account are needed.
+Open http://127.0.0.1:5174. No API keys or external database account are needed.
 
-## Play
+## Play the complete loop
 
-1. Choose Run It Back, The Original, 14m.
-2. Quick Start jumps and aims; fire while airborne. Keyboard/mouse controls are shown in the arena.
-3. Change preset/distance for a remix; land the new setup to unlock sharing.
-4. Enter a name and Pass the Play.
-5. Copy the invitation to a fresh browser session for the teammate.
-6. Complete the same shot, Finish the Relay, then watch Squad Premiere.
+1. Choose your game from the home page or arena selector.
+2. Choose a playable MP4, WebM or modern MOV, up to 50 MiB and 90 seconds. Select start/end of the moment and Use This Clip.
+3. Set the mechanic and target distance. Play Selected Moment keeps the reference available while practicing.
+4. Keyboard Start gives keyboard controls without mouse capture. WASD moves, Space jumps, Q/E turns, arrow keys aim, F fires, R retries. B places a build, G edits a wall, X dashes, C aims down sights when available. Buttons expose the same actions.
+5. Align Aim is an explicitly labeled practice assist; it aims only. Required actions must still succeed. It is unavailable for spin challenges.
+6. Land the required shot. Changing mode, preset, distance or clip invalidates proof. Enter a name and Pass the Play.
+7. Send the invitation to a fresh browser tab. The guest receives the same environment, challenge and reference clip, completes it, and opens Squad Premiere.
+8. Watch both recorded attempts. Remix to raise the difficulty; the new challenge needs a new successful attempt.
 
-## Storage and production commands
+Uploaded draft references/settings survive same-tab refresh. Unpublished gameplay attempts reset. Published relay progress is stored on the server. Host markers are session-scoped UI recovery hints, not authentication; duplicated tabs may inherit them.
+
+## Storage and production
 
 ```powershell
 npm run build
 $env:PORT='5174'
-# For a reachable hosted server use HOST=0.0.0.0 and a persistent disk.
-# Choose a local folder outside OneDrive for long-running SQLite storage.
 $env:DATABASE_PATH='C:/hackuta26-data/relays.sqlite'
+$env:CLIP_DIRECTORY='C:/hackuta26-data/clips'
 npm start
 ```
 
-DATABASE_PATH is optional; default is data/relays.sqlite relative to the working directory. The server creates parent directories. A persistent host must mount storage and set this variable. .env.example is a reference; export these variables in the shell or hosting settings. No deployment has been performed.
+CLIP_DIRECTORY defaults beside a custom DATABASE_PATH, otherwise data/clips. SQLite and media need persistent storage when hosted. Keep long-running data outside OneDrive. The env example documents variables; set them in your shell or host settings.
 
-## Team and validation
+Clip storage is a single-process local prototype: two uploads at once, 50 MiB per clip, 512 MiB stored-media quota, 60-second receive deadline. Container headers and metadata are checked; browser playback checks decoding. File data is fsynced and metadata published atomically; Windows directory/power-loss durability is not established. No committed clip eviction or deletion UI is included. Conservative MOV policy requires a qt ftyp header; H.264 MP4 is the preferred compatible upload.
 
-See AGENTS.md, docs/ROADMAP.md and docs/TEAM-INSTRUCTIONS.md for the permanent five-role workflow. Existing signed-in profiles generate proposals; desktop applies them and runs actual checks. Separate worktrees live beside this checkout in ../agent-worktrees/.
+The default server listens only on localhost. Localhost invitation links do not work from another device without a reachable host. No login, public abuse controls, competitive anti-cheat, multiplayer networking, arbitrary clip reconstruction or exported montage video is claimed. Full movement requires keyboard/mouse and WebGL; mobile parity is unverified.
+
+## Brand and team
+
+All served fonts, logo and textures match the downloaded FaZe Drive toolkit byte for byte. Authored typography uses Source and Anton only. Game names are plain text; scene geometry and weapon silhouettes are original. See docs/team/brand-provenance.json.
+
+Permanent roles: Codex 1 coordination/contracts, Codex 2 backend, Codex 3 UI/gameplay, Claude 1 independent review/brand audit, Claude 2 independent tests. Both Claude profiles are pinned to claude-opus-5-5. Existing account profiles remained separate and produced fresh successful turns. Read-only provider proposals were applied and tested by desktop. See docs/team/H26-2-ACCOUNTS.md and AGENTS.md.
+
+## Validation
 
 ```powershell
 npm test
 npm run build
 ```
 
-## Scope
+49 tests pass. See docs/team/H26-2-BROWSER-QA.md for independently performed browser checks and separate root upload/ramp/relay checks, plus screenshots. Detailed limits are in docs/VALIDATION.md.
 
-Original browser gameplay, jump/180/360 presets, discrete distance remixes, two-person relays and in-app replays. No arbitrary clip reconstruction, AI analysis, downloadable montage video, other game modes, live multiplayer or competitive anti-cheat. Keyboard/mouse and WebGL are required for full gameplay. A localhost invitation works only on this computer; internet sharing requires a reachable host. Server completion is client-reported. This prototype has no login or production abuse controls.
+Private repository https://github.com/Kx007-del/hackuta26 was created. Work is local on build/five-agent-h26; no push, main merge or deployment has been performed. Reference prototype: Kx007-del/faze-run-it-back commit 3f66407f09880c445239f1c95858d6c73f449a30.

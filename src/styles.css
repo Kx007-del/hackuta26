@@ -16,7 +16,7 @@
   font-display: swap;
 }
 :root {
-  font-family: Source, Arial, sans-serif;
+  font-family: Source;
   color: #f3f1ee;
   background: #111111;
   font-synthesis: none;
@@ -73,7 +73,7 @@ p {
 h1,
 h2,
 h3 {
-  font-family: Anton, Impact, sans-serif;
+  font-family: Anton;
   font-weight: 400;
 }
 html {
@@ -107,7 +107,7 @@ html {
 }
 .brand-sub {
   display: block;
-  font: 9px monospace;
+  font: 9px Source;
   letter-spacing: 1.4px;
   color: var(--muted);
   margin-top: 7px;
@@ -133,7 +133,7 @@ nav a {
   color: var(--red);
 }
 .edition {
-  font: 10px monospace;
+  font: 10px Source;
   letter-spacing: 1px;
   border: 1px solid var(--border);
   padding: 12px;
@@ -157,7 +157,7 @@ nav a {
   margin: auto;
 }
 .eyebrow {
-  font: 10px monospace;
+  font: 10px Source;
   letter-spacing: 1.3px;
   color: #b3b2b5;
   display: flex;
@@ -239,7 +239,7 @@ nav a {
   gap: 19px;
   margin-top: 25px;
   color: #757577;
-  font: 9px monospace;
+  font: 9px Source;
 }
 .hero-tags span + span:before {
   content: "+";
@@ -257,7 +257,7 @@ nav a {
 .visual-meta {
   display: flex;
   justify-content: space-between;
-  font: 9px monospace;
+  font: 9px Source;
   letter-spacing: 1px;
   padding: 17px 20px;
   color: #aaa;
@@ -291,7 +291,7 @@ nav a {
   background: #1b1b1e;
 }
 .micro {
-  font: 9px monospace;
+  font: 9px Source;
   letter-spacing: 1.3px;
   color: #9d9da2;
 }
@@ -364,7 +364,7 @@ nav a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font: 9px monospace;
+  font: 9px Source;
   color: #828287;
   letter-spacing: 1px;
 }
@@ -418,7 +418,7 @@ footer {
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  font: 8px monospace;
+  font: 8px Source;
   color: #6e6e74;
   letter-spacing: 0.7px;
 }
@@ -458,14 +458,14 @@ footer {
   padding: 15px 18px;
   display: flex;
   justify-content: space-between;
-  font: 9px monospace;
+  font: 9px Source;
   letter-spacing: 1px;
   color: #aaa;
 }
 .play-caption {
   display: flex;
   justify-content: space-between;
-  font: 8px monospace;
+  font: 8px Source;
   color: #888;
   padding: 13px 0;
 }
@@ -475,7 +475,7 @@ footer {
   margin-top: 15px;
 }
 .tip-panel > span {
-  font: 9px monospace;
+  font: 9px Source;
   color: #e85770;
   letter-spacing: 1px;
 }
@@ -495,7 +495,7 @@ footer {
   gap: 13px;
 }
 .share-panel label {
-  font: 10px monospace;
+  font: 10px Source;
   letter-spacing: 1px;
   color: #bbb;
 }
@@ -594,7 +594,7 @@ footer {
   margin: 0 12px;
 }
 .pill {
-  font: 9px monospace;
+  font: 9px Source;
   letter-spacing: 1px;
   border: 1px solid var(--border);
   padding: 12px;
@@ -648,7 +648,7 @@ footer {
   border-color: var(--red);
 }
 .premiere-credits span {
-  font: 9px monospace;
+  font: 9px Source;
   color: #999;
 }
 .premiere-credits strong {
@@ -657,7 +657,7 @@ footer {
   font-size: 25px;
 }
 .premiere-credits small {
-  font: 10px monospace;
+  font: 10px Source;
   color: #aaa;
 }
 .premiere-actions {
@@ -874,3 +874,5 @@ footer {
     padding: 16px 22px;
   }
 }
+
+.home-worlds{max-width:1400px;margin:0 auto;padding:0 5% 60px}.home-worlds .environment-card{min-height:220px}

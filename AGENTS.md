@@ -14,4 +14,4 @@ Use the existing five signed-in profiles and local message service. It dispatche
 
 User authorized this local build and creation of Kx007-del/hackuta26. Pushes, main merges and deployment still require explicit approval. Use an integration branch. Keep old hackuta and faze-run-it-back repositories unchanged.
 
-Read docs/ROADMAP.md and shared/contracts.ts. MVP: original rooftop, jump/180/360, prove-remix gate, two-person relay, persistence and sequential replays. No arbitrary reconstruction, video export or anti-cheat claims.
+Read docs/ROADMAP.md and shared/contracts.ts. Current H26-2 scope: clip upload/preview/trim, original Rooftop/Buildyard/Courtyard environments, mode-specific jump/spin/build/edit/stationary/dash proof, harder remixes, two-person relay and sequential replays. Read docs/H26-2-PLAN.md. Only toolkit Source/Anton fonts and supplied FaZe logos; preserve provenance. No automatic video reconstruction or anti-cheat claims. Balance substantive work across all three Codex and two Claude profiles; both Claude profiles are pinned to claude-opus-5-5.
