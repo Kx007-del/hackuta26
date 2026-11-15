@@ -30,6 +30,16 @@ The resumed user instruction authorizes bounded work and publication of unique t
 
 ## Acceptance
 
+## Post-review frozen decisions
+
+Claude 1's review at 7137eef is dispositioned as follows. All new executable tests go under tests/ so npm test discovers them. Both helper modules are pure on import: no process.env reads, React/Three/CSS imports or server startup. Unit tests never import server/index.ts. Leading-zero ASCII PORT values are accepted as decimal (0080 becomes 80); plus signs, exponent/hex/decimal notation, full-width digits, negatives, out-of-range and nonfinite huge values are rejected with a fixed message that does not echo input. Resolve runtime config before storage/Vite/listen side effects.
+
+Guide steps explicitly distinguish spin180's facing-away start from spin360's facing-target start, and net rotation after takeoff. Ramp shots require B outside the slot, walking onto the ramp and jumping from it before firing airborne. Wall-edit has no ramp: B/G open the upper wall panel, then jump on the near side and shoot through the opening. Dash-peek starts behind the left crate and uses one grounded X dash 4m to the right, then release movement, settle and fire. Include Keyboard Start, captured-click fire and Esc release in the actual controls.
+
+Render the guide once in the play layout using replayAttempt?.config ?? config, replacing the existing generic THE PLAYBOOK copy. Do not add a guide to the premiere screen. GameArena replay objective distance must use playConfig too. Supply Codex 3 a complete actual source packet for exact proposals. Temporary execution assignment: desktop Codex 1 may apply Codex 3-authored proposals in src/ and non-test packages/challenges/ and packages/gameplay/ in the coordinator's own workspace, with authorship and execution recorded separately. This is not a permission change on Windows 3.
+
+## Acceptance checks
+
 - Runtime config and health commit identity are deterministic and expose no credentials or arbitrary environment values.
 - Every preset has correct, readable steps and controls; switching games/presets updates the guide; labels describe original practice mechanics honestly.
 - Existing relay, clip, proof and brand behavior remains intact; independent new tests and existing tests pass; production build passes.
