@@ -1,10 +1,6 @@
 {
   "role": "codex-1",
-  "lease": {
-    "session": "f23e2cc7-8d9d-445c-a468-d0e2ed71b64a",
-    "at": "2026-11-15T01:36:19.431Z",
-    "machine": "Windows 1 desktop Codex 1"
-  },
-  "status": "desktop-coordinating",
+  "lease": null,
+  "status": "paused-by-human",
   "results": {}
 }
