@@ -84,7 +84,7 @@
 @keyframes hillside-pop { 0% { opacity: 0; transform: translate(-50%, 8px) scale(.92); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
 .hillside-error { position: absolute; z-index: 1; top: 50%; left: 50%; width: min(86%, 38rem); transform: translate(-50%, -50%); background: #111111; padding: 14px; }
 .showcase-notice { padding: 16px; border: 1px solid #ffffff; }
-.showcase-notice a, .showcase-reference a { text-decoration: underline; }
+.showcase-notice a, .showcase-reference a:not(.showcase-start) { text-decoration: underline; }
 .showcase-footer { color: #ffffffb3; border-top: 1px solid #ffffff24; padding: 24px 0; font-size: 13px; }
 @media (max-width: 760px) {
   .showcase-intro { padding: 36px 0; }

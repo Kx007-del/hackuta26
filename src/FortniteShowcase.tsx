@@ -111,7 +111,6 @@ function HomePage({ search }: { search: string }) {
       <p className="showcase-eyebrow">ONE CLIP. ONE WORLD. YOUR MOMENT.</p>
       <h1>WATCH THE MOMENT.<br/><em>RUN IT BACK.</em></h1>
       <p>Watch the original Fortnite trick shot, then take your own shot and see how it compares.</p>
-      <a href={PRACTICE} className="showcase-start">Try it yourself ↗</a>
     </section>
     <section className="showcase-reference" aria-labelledby="reference-heading">
       <div>
@@ -125,6 +124,7 @@ function HomePage({ search }: { search: string }) {
           Your browser cannot play this reference. <a href={SHOWCASE_REFERENCE.src}>Open the video</a>.
         </video>
         {videoError && <p role="alert">The reference could not load. <a href={SHOWCASE_REFERENCE.src}>Open the video directly</a>.</p>}
+        <a href={PRACTICE} className="showcase-start">Try it yourself ↗</a>
       </div>
     </section>
   </>;
