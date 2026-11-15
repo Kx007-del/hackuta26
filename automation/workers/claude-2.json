@@ -2,10 +2,10 @@
   "role": "claude-2",
   "lease": {
     "session": "cfe656b9-c6d0-45c2-9769-c47d261496ab",
-    "at": "2026-11-15T01:40:53.853Z",
+    "at": "2026-11-15T01:40:57.678Z",
     "machine": "OmniBook"
   },
-  "status": "working",
+  "status": "offline",
   "results": {
     "b97db487-6ef0-4b74-accc-3306f81ae58d": {
       "status": "done",
