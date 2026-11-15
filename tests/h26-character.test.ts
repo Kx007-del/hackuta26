@@ -19,31 +19,63 @@ const poses: Array<[string, CharacterPose]> = [
 ];
 const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
-test('visor stays in front of the helmet across both front quarters and aim pitches', () => {
+test('the cylindrical mask face clears the shell from both quarters at all review pitches', () => {
   const c = makeCharacter();
   try {
     const shell = c.root.getObjectByName('Helmet shell') as THREE.Mesh;
-    const visor = c.root.getObjectByName('Helmet visor') as THREE.Mesh;
-    assert.ok(shell?.isMesh && visor?.isMesh);
-    const helmet = shell.parent!;
+    assert.ok(shell?.isMesh);
+    const mask = shell.parent!;
+    const strokes = mask.children.filter(node => node.name.startsWith('Mask ')) as THREE.Mesh[];
+    assert.equal(strokes.filter(node => node.name === 'Mask eye').length, 4);
+    assert.equal(strokes.filter(node => node.name === 'Mask smile').length, 1);
     const ray = new THREE.Raycaster();
     for (const pitch of [-.6, 0, .55]) {
       c.pose({ ...base, pitch });
       c.root.updateMatrixWorld(true);
-      for (let angle = -1.1; angle <= 1.1; angle += .025) {
-        for (const height of [-.045, -.025, .001, .025, .035]) {
-          const heading = Math.PI + angle;
-          const origin = helmet.localToWorld(new THREE.Vector3(Math.sin(heading) * .5, height, Math.cos(heading) * .5));
-          const centre = helmet.localToWorld(new THREE.Vector3(0, height, 0));
-          ray.set(origin, centre.sub(origin).normalize());
-          const shellHit = ray.intersectObject(shell, false)[0];
-          const visorHit = ray.intersectObject(visor, false)[0];
-          assert.ok(shellHit && visorHit, `missing surface at ${pitch}/${angle}/${height}`);
-          assert.ok(shellHit.distance - visorHit.distance > .003,
-            `helmet obscures visor at pitch=${pitch}, angle=${angle}, y=${height}`);
+      for (const stroke of strokes) {
+        const positions = stroke.geometry.attributes.position;
+        const indices = stroke.geometry.index!;
+        for (let i = 0; i < indices.count; i += 3) {
+          const point = new THREE.Vector3();
+          for (let j = 0; j < 3; j++) {
+            point.add(new THREE.Vector3().fromBufferAttribute(positions, indices.getX(i+j)));
+          }
+          point.multiplyScalar(1/3);
+          const centre = new THREE.Vector3(0,point.y,0);
+          const origin = point.clone().sub(centre).multiplyScalar(2.6).add(centre);
+          const worldOrigin = mask.localToWorld(origin);
+          ray.set(worldOrigin, mask.localToWorld(centre).sub(worldOrigin).normalize());
+          const paint = ray.intersectObject(stroke,false)[0];
+          const white = ray.intersectObject(shell,false)[0];
+          assert.ok(paint && white && white.distance - paint.distance > .0006,
+            `${stroke.name} breaks through the shell at pitch ${pitch}, triangle ${i/3}`);
         }
       }
     }
+  } finally { c.dispose(); }
+});
+
+test('keeps a boot planted during the run cycle and settles after landing', () => {
+  const c = makeCharacter();
+  function footHeight() {
+    c.root.updateMatrixWorld(true);
+    const heights: number[] = [];
+    c.root.traverse(o => { if (o.name === 'Boot') heights.push(new THREE.Box3().setFromObject(o,true).min.y); });
+    assert.equal(heights.length,2);
+    return Math.min(...heights);
+  }
+  try {
+    for(let i=0;i<32;i++) {
+      c.pose({ ...base, walkWeight:1, gait:i*Math.PI/16 });
+      assert.ok(footHeight() >= -.001 && footHeight() < .02, 'at least one boot stays level with the sole planted');
+    }
+    c.pose({ ...base, grounded:false, vy:-4 });
+    c.pose(base);
+    assert.ok(footHeight() >= -.001 && footHeight() < .02);
+    const compressed = c.joints.rightShoulder.clone();
+    c.tick(.2);
+    c.pose(base);
+    assert.ok(compressed.distanceTo(c.joints.rightShoulder) > .006, 'the landing compression releases');
   } finally { c.dispose(); }
 });
 
