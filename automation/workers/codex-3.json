@@ -1,10 +1,6 @@
 {
   "role": "codex-3",
-  "lease": {
-    "session": "5ff2c9a3-27bb-470c-b274-9409ba9be23b",
-    "at": "2026-11-15T00:12:40.597Z",
-    "machine": "HpPavilion"
-  },
+  "lease": null,
   "status": "offline",
   "results": {
     "f97732f3-fbed-4b8a-852f-1adc3cead87b": {
