@@ -69,8 +69,18 @@ export function createAttemptRecorder(canvas: HTMLCanvasElement) {
   return { supported: !!(supported && mimeType), start, cancel: discard, maintain, finish, dispose };
 }
 
+/** A failed scoring request; `status` is 0 for a network failure. */
+export class ScoreError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
+/** A random id for one attempt, so a repeated request for it is recorded once. */
+export function newAttemptId() {
+  try { return crypto.randomUUID(); } catch { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`; }
+}
+
 /** Sends the attempt for scoring. The clip is only sent when the player allowed AI scoring. */
-export async function submitScore(telemetry: AttemptTelemetry, clip: Blob | undefined, consent: AiConsent, signal?: AbortSignal): Promise<ScoreResponse> {
+export async function submitScore(telemetry: AttemptTelemetry, clip: Blob | undefined, consent: AiConsent, signal?: AbortSignal, attemptId?: string): Promise<ScoreResponse> {
   const json = JSON.stringify(telemetry);
   const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const sendClip = consent === 'yes' && clip && clip.size > 0 && clip.size <= 8 * 1024 * 1024;
@@ -79,12 +89,13 @@ export async function submitScore(telemetry: AttemptTelemetry, clip: Blob | unde
     headers: {
       'x-score-telemetry': encoded,
       'x-score-ai': sendClip ? 'yes' : 'no',
+      ...(attemptId ? { 'x-attempt-id': attemptId } : {}),
       ...(sendClip ? { 'Content-Type': clip!.type || 'video/webm' } : {}),
     },
     body: sendClip ? clip : undefined,
     signal,
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.error ?? 'Scoring is unavailable right now.');
+  if (!response.ok) throw new ScoreError(data?.error ?? 'Scoring is unavailable right now.', response.status);
   return data as ScoreResponse;
 }

@@ -280,7 +280,7 @@ test('endpoint: at most N AI calls in flight; extra requests fall back instead o
 test('wiring: scoring is registered before the /api 404, and the preview allows one shot per attempt', async () => {
   const { readFileSync } = await import('node:fs');
   const index = readFileSync(new URL('../server/index.ts', import.meta.url), 'utf8');
-  assert.ok(index.indexOf('registerShowcaseScoring(app)') > 0 && index.indexOf('registerShowcaseScoring(app)') < index.indexOf('Unknown API route'));
+  assert.ok(index.indexOf('registerShowcaseScoring(app') > 0 && index.indexOf('registerShowcaseScoring(app') < index.indexOf('Unknown API route'));
   const preview = readFileSync(new URL('../packages/gameplay/HillsidePreview.tsx', import.meta.url), 'utf8');
   assert.match(preview, /shotsThisAttempt > 0\) return/);
   assert.match(preview, /consentRef\.current === 'yes' \? await recorder\.finish\(\) : undefined/);

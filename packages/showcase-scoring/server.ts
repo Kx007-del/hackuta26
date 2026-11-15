@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
-import { airborneOffBuild, rayHitsTarget, standingOnBuild, targetBase } from '../gameplay/hillsideScene';
+import { airborneOffBuild, rayHitsTarget, SPAWN_POINT, standingOnBuild, targetBase } from '../gameplay/hillsideScene';
+import { ineligibleReason, type AttemptProgress } from '../progression/rules';
+import type { ScoringProgress } from '../progression/server';
 import { judgeAttempt, type GeminiOutcome } from './gemini';
 import { blendScore, parseTelemetry, scoreTelemetry, type TelemetryParts } from './telemetry';
 
@@ -11,6 +13,8 @@ export const MAX_CLIP_BYTES = 8 * 1024 * 1024;
 const CLIP_TYPES = new Set(['video/webm', 'video/mp4']);
 const TELEMETRY_HEADER = 'x-score-telemetry';
 const CONSENT_HEADER = 'x-score-ai';
+/** Random id the browser makes once per attempt, so retries of the same attempt are recorded once. */
+const ATTEMPT_HEADER = 'x-attempt-id';
 
 export type ScoreResponse = {
   score: number;
@@ -19,6 +23,10 @@ export type ScoreResponse = {
   ai: { status: 'ok'; similarity: number; components: Record<string, number>; feedback: string; confidence: number }
     | { status: 'unavailable'; reason: string }
     | { status: 'declined' };
+  /** Community progress for this attempt (present when progression is enabled). */
+  progress?: AttemptProgress;
+  /** True when this attempt was already saved and the stored result is being returned again. */
+  replayed?: boolean;
 };
 
 type Options = {
@@ -30,6 +38,8 @@ type Options = {
   aiPerMinute?: number;
   requestsPerMinute?: number;
   now?: () => number;
+  /** Optional community progression (XP, streaks, badges). Scoring works without it. */
+  progress?: ScoringProgress;
 };
 
 export function registerShowcaseScoring(app: Express, options: Options = {}) {
@@ -97,38 +107,53 @@ export function registerShowcaseScoring(app: Express, options: Options = {}) {
     };
     const parts = scoreTelemetry(telemetry, derived);
 
-    const consent = req.headers[CONSENT_HEADER] === 'yes';
-    const clip = Buffer.isBuffer(req.body) && req.body.length > 0 ? req.body : undefined;
-    let outcome: GeminiOutcome | { status: 'declined' };
-    if (!consent || !clip) outcome = { status: 'declined' };
-    else {
-      const mimeType = String(req.headers['content-type']).split(';')[0].trim().toLowerCase();
-      const key = createHash('sha256').update(clip).digest('hex');
-      const cached = cache.get(key);
-      if (cached && now() - cached.at < CACHE_MS) outcome = cached.outcome;
-      else if (!allow(aiCalls, req.ip ?? 'unknown', aiPerMinute) || inFlight >= maxConcurrent) outcome = { status: 'unavailable', reason: 'rate-limited' };
+    // Claim the attempt before any AI work: a replayed or duplicate request is recorded once.
+    const progress = options.progress?.begin(req, res, req.headers[ATTEMPT_HEADER]);
+    if (progress?.kind === 'replay') { res.setHeader('Cache-Control', 'no-store'); res.json({ ...(progress.body as object), replayed: true }); return; }
+    if (progress?.kind === 'busy') { res.status(409).json({ error: 'This attempt is still being scored.' }); return; }
+    let finished = false;
+    try {
+      const consent = req.headers[CONSENT_HEADER] === 'yes';
+      const clip = Buffer.isBuffer(req.body) && req.body.length > 0 ? req.body : undefined;
+      let outcome: GeminiOutcome | { status: 'declined' };
+      if (!consent || !clip) outcome = { status: 'declined' };
       else {
-        inFlight += 1;
-        try {
-          const { apiKey, model, timeoutMs } = env();
-          outcome = await judge({ apiKey, model, timeoutMs, reference: loadReference(), attempt: { mimeType, base64: clip.toString('base64') } });
-        } finally { inFlight -= 1; }
-        if (outcome.status === 'ok') {
-          cache.set(key, { at: now(), outcome });
-          if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!);
-        } else console.error(`Showcase scoring: AI unavailable (${outcome.reason}).`);
+        const mimeType = String(req.headers['content-type']).split(';')[0].trim().toLowerCase();
+        const key = createHash('sha256').update(clip).digest('hex');
+        const cached = cache.get(key);
+        if (cached && now() - cached.at < CACHE_MS) outcome = cached.outcome;
+        else if (!allow(aiCalls, req.ip ?? 'unknown', aiPerMinute) || inFlight >= maxConcurrent) outcome = { status: 'unavailable', reason: 'rate-limited' };
+        else {
+          inFlight += 1;
+          try {
+            const { apiKey, model, timeoutMs } = env();
+            outcome = await judge({ apiKey, model, timeoutMs, reference: loadReference(), attempt: { mimeType, base64: clip.toString('base64') } });
+          } finally { inFlight -= 1; }
+          if (outcome.status === 'ok') {
+            cache.set(key, { at: now(), outcome });
+            if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value!);
+          } else console.error(`Showcase scoring: AI unavailable (${outcome.reason}).`);
+        }
       }
+      const ai: ScoreResponse['ai'] = outcome.status === 'ok'
+        ? { status: 'ok', similarity: outcome.judgement.similarity, components: outcome.judgement.components, feedback: outcome.judgement.feedback, confidence: outcome.judgement.confidence }
+        : outcome.status === 'declined' ? { status: 'declined' } : { status: 'unavailable', reason: outcome.reason };
+      const base: ScoreResponse = {
+        score: blendScore(parts.score, ai.status === 'ok' ? ai.similarity : null, hit),
+        hit,
+        telemetry: { onStructure: parts.onStructure, distanceM: parts.distanceM, turnDeg: Math.round(parts.turnDeg), components: parts.components, score: parts.score },
+        ai,
+      };
+      const movedM = Math.hypot(shooter.x - SPAWN_POINT.x, shooter.z - SPAWN_POINT.z);
+      const ineligible = ineligibleReason({ shots: telemetry.shots, elapsedMs: telemetry.elapsedMs, movedM, turnDeg: parts.turnDeg });
+      const body: ScoreResponse = progress?.kind === 'claimed'
+        ? progress.finish({ score: base.score, hit, aiStatus: ai.status, ineligible }, base)
+        : progress?.kind === 'skip' ? { ...base, progress: { status: 'not-counted', reason: progress.reason } } : base;
+      finished = true;
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(body);
+    } finally {
+      if (!finished && progress?.kind === 'claimed') progress.abort();
     }
-    const ai: ScoreResponse['ai'] = outcome.status === 'ok'
-      ? { status: 'ok', similarity: outcome.judgement.similarity, components: outcome.judgement.components, feedback: outcome.judgement.feedback, confidence: outcome.judgement.confidence }
-      : outcome.status === 'declined' ? { status: 'declined' } : { status: 'unavailable', reason: outcome.reason };
-    const body: ScoreResponse = {
-      score: blendScore(parts.score, ai.status === 'ok' ? ai.similarity : null, hit),
-      hit,
-      telemetry: { onStructure: parts.onStructure, distanceM: parts.distanceM, turnDeg: Math.round(parts.turnDeg), components: parts.components, score: parts.score },
-      ai,
-    };
-    res.setHeader('Cache-Control', 'no-store');
-    res.json(body);
   });
 }
