@@ -1,7 +1,11 @@
 {
   "role": "codex-1",
-  "lease": null,
-  "status": "offline",
+  "lease": {
+    "session": "6dcc5833-f656-488d-90e5-54be0c0ca794",
+    "at": "2026-11-15T00:03:16.754Z",
+    "machine": "KrunalMadhani"
+  },
+  "status": "waiting",
   "results": {
     "843868ec-f598-4d99-9f25-fdae003467ec": {
       "status": "done",
