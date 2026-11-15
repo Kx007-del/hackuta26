@@ -19,10 +19,12 @@ export default function PracticeGuide({ config, isReplay }: Props) {
       <ol>
         {steps.map(step => <li key={step}>{step}</li>)}
       </ol>
-      <h3>Practice controls</h3>
-      <ul>
-        {controls.map(control => <li key={control}>{control}</li>)}
-      </ul>
+      <details>
+        <summary>Practice controls</summary>
+        <ul>
+          {controls.map(control => <li key={control}>{control}</li>)}
+        </ul>
+      </details>
     </section>
   );
 }

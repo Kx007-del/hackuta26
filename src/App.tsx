@@ -667,7 +667,8 @@ export default function App() {
                     </span>
                     <strong>{n}</strong>
                     <small>
-                      {relay.challenge.requiredSpinDegrees}° ·{" "}
+                      {relay.challenge.arenaId === "rooftop-v1" &&
+                        `${relay.challenge.requiredSpinDegrees}° · `}
                       {relay.challenge.targetDistance}m · LANDED ✓
                     </small>
                   </button>
@@ -733,7 +734,8 @@ export default function App() {
                     <div>
                       <strong>{relay.hostName} passed you the play.</strong>
                       <p>
-                        {relay.challenge.requiredSpinDegrees}° rotation ·{" "}
+                        {relay.challenge.arenaId === "rooftop-v1" &&
+                          `${relay.challenge.requiredSpinDegrees}° rotation · `}
                         {relay.challenge.targetDistance}m target · Your turn to
                         answer.
                       </p>
