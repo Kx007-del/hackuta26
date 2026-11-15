@@ -54,6 +54,7 @@ export default function FortniteShowcase({
   }
 
   return <div className="fortnite-showcase" onClick={navigate}>
+    <a className="showcase-skip" href="#main-content">Skip to content</a>
     <header className="showcase-header">
       <a className="showcase-brand" href="/" aria-label="Run It Back home">
         <img src="/brand/logo.png" alt="FaZe" />
@@ -61,7 +62,7 @@ export default function FortniteShowcase({
       </a>
       <nav className="competition-nav" aria-label="Main navigation">{[['Play', '/'], ['Leaderboards', '/leaderboards'], ['Join Events', '/events'], ['Host an Event', '/host']].map(([label, href]) => <a key={href} href={href} aria-current={activeTab(route) === label ? 'page' : undefined}>{label}</a>)}</nav>
     </header>
-    <main>
+    <main id="main-content" tabIndex={-1}>
       {step === 'Results' && <nav className="showcase-steps" aria-label="Showcase steps">
         <a href="/">01 Reference</a>
         <a href={PRACTICE}>02 Practice</a>
@@ -75,7 +76,7 @@ export default function FortniteShowcase({
         </Suspense>}
       </section> : step === 'Results' ? <ResultsPage current={fallback} /> : <HomePage search={search} />}
     </main>
-    <footer className="showcase-footer">An original, game-inspired practice prototype. Reference footage shown for the showcase. No affiliation implied.</footer>
+    <footer className="showcase-footer"><span className="showcase-footer-brand">RUN IT BACK<span>WATCH. PLAY. COMPETE.</span></span><p>An independent, game-inspired challenge experience. Reference footage shown for the showcase. No affiliation implied.</p></footer>
   </div>;
 }
 
