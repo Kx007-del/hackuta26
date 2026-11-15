@@ -2,15 +2,15 @@
   "role": "codex-3",
   "lease": {
     "session": "5ff2c9a3-27bb-470c-b274-9409ba9be23b",
-    "at": "2026-11-15T00:12:23.758Z",
+    "at": "2026-11-15T00:12:37.761Z",
     "machine": "HpPavilion"
   },
   "status": "working",
   "results": {
     "f97732f3-fbed-4b8a-852f-1adc3cead87b": {
-      "status": "running",
-      "startedAt": "2026-11-15T00:12:19.924Z",
-      "baseSha": "c14417a3409d58783342af07bbec709148c08ee5"
+      "status": "failed",
+      "finishedAt": "2026-11-15T00:12:37.400Z",
+      "error": "Agent reported a blocker; inspect local reply/logs"
     }
   }
 }
