@@ -3,13 +3,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { apiErrorHandler, registerApi } from "../packages/social/server";
 import { registerClipApi } from "../packages/social/clips";
+import { resolveRuntimeConfig } from "./runtime-config";
+const { host, port, commit } = resolveRuntimeConfig(process.env);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
 app.disable("x-powered-by");
 const clips = registerClipApi(app);
 app.use(express.json({ limit: "2mb" }));
 app.get("/api/health", (_req, res) =>
-  res.json({ ok: true, service: "run-it-back" }),
+  res.json({ ok: true, service: "run-it-back", commit }),
 );
 const cleanup = registerApi(app, { clipLookup: clips.get });
 app.use("/api", (_req, res) =>
@@ -30,8 +32,6 @@ if (process.argv.includes("--production")) {
   app.use(vite.middlewares);
 }
 app.use(apiErrorHandler);
-const port = Number(process.env.PORT || 5173);
-const host = process.env.HOST || "127.0.0.1";
 const server = app.listen(port, host, () =>
   console.log(`Run It Back ready at http://${host}:${port}`),
 );
