@@ -1,7 +1,11 @@
 {
   "role": "claude-1",
-  "lease": null,
-  "status": "offline",
+  "lease": {
+    "session": "8a5242a0-e596-4fcf-b9c5-c247316d9206",
+    "at": "2026-11-15T00:03:15.484Z",
+    "machine": "KrunalMadhani"
+  },
+  "status": "waiting",
   "results": {
     "115795ac-1301-49b3-82ba-e36a4ad6d88d": {
       "status": "done",
