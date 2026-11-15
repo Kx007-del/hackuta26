@@ -266,7 +266,11 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     {error?<div className="game-error">{error}</div>:<>
       <div className="game-top"><span className="game-location">{location}</span><span className="game-live">{replay?'● REPLAY':'● PRACTICE ARENA'}</span></div>
       <div className="game-crosshair" aria-hidden="true"><i/><i/></div>
-      <div className="game-objective"><span className="game-kicker">THE SHOT</span><strong>{objective}</strong><span>{config.targetDistance}m target · {replay?'Recorded gameplay':'One shot per attempt'}</span></div>
+      <div className="game-objective">
+        <span className="game-kicker">THE SHOT</span>
+        <strong>{objective}</strong>
+        <span>{targetDistance}m target · {replay?'Recorded gameplay':'One shot per attempt'}</span>
+      </div>
       {!replay&&<div className="game-telemetry">
         {tactical?<span>{dashPeek?(hud.dashes?'Dash cleared':'Dash from cover'):'Stand still to shoot'}</span>:<span className={hud.air?'is-met':''}>{hud.air?'Airborne':'Get airborne'}</span>}
         {buildyard&&<span>{hud.edited?'Wall edited':hud.builds?'Build placed':'Place build'}</span>}
@@ -277,7 +281,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
 {wallEdit&&<button disabled={!hud.builds||hud.edited||hud.finished} onClick={()=>actions.current?.edit()}>Edit wall <kbd>G</kbd></button>}
 {dashPeek&&<button disabled={!!hud.dashes||hud.finished} onClick={()=>actions.current?.dash()}>Dash <kbd>X</kbd></button>}
 <button aria-pressed={hud.ads} disabled={hud.finished} onClick={()=>actions.current?.aim()}>Aim down sights <kbd>C</kbd></button>
-{(!roof||requiredSpinDegrees===0)&&<button disabled={hud.finished} onClick={()=>actions.current?.align()}>ALIGN AIM <kbd>PRACTICE ASSIST</kbd></button>}<button disabled={!hud.ready||hud.finished} onClick={()=>actions.current?.fire()}>⌖ FIRE <kbd>F</kbd></button><button onClick={()=>{actions.current?.reset();arena.current?.focus({preventScroll:true})}}>↻ RETRY <kbd>R</kbd></button></div><div className="game-controls"><span><kbd>WASD</kbd> move</span><span><kbd>Q / E</kbd> spin</span><span><kbd>↑ / ↓</kbd> aim</span><span>Click arena for mouse aim · Esc releases</span></div></>}</div>
+{(!roof||requiredSpinDegrees===0)&&<button disabled={hud.finished} onClick={()=>actions.current?.align()}>ALIGN AIM <kbd>PRACTICE ASSIST</kbd></button>}<button disabled={!hud.ready||hud.finished} onClick={()=>actions.current?.fire()}>⌖ FIRE <kbd>F</kbd></button><button onClick={()=>{actions.current?.reset();arena.current?.focus({preventScroll:true})}}>↻ RETRY <kbd>R</kbd></button></div><div className="game-controls"><span><kbd>WASD</kbd> move</span><span><kbd>Q / E</kbd> {tactical ? 'turn' : 'spin'}</span><span><kbd>↑ / ↓</kbd> aim</span><span>Click arena for mouse aim · Esc releases</span></div></>}</div>
     </>}
   </section>;
 }
