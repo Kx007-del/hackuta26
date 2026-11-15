@@ -3,8 +3,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { makeRifle, type Rifle } from './rifle';
 
 /**
- * Hand-authored reconstruction of the cylindrical mask, white streetwear and purple
- * back accessory visible in the supplied recording. No game meshes or textures are used.
+ * An original stylized character: white streetwear and a round helmet
+ * with a glowing visor (no face). Not a copy of any game or real person's look; no game meshes or
+ * textures are used.
  *
  * Root space: feet at the origin, facing -Z, +Y up. The rifle is held in both hands; the arms are
  * solved each frame (two-bone IK) so the hands stay on the grip and forend at every aim angle.
@@ -56,10 +57,7 @@ export function makeCharacter(): Character {
   const suit = mat(new THREE.MeshStandardMaterial({ color: '#eceef0', roughness: .82 }));
   const suitShade = mat(new THREE.MeshStandardMaterial({ color: '#d3d8dd', roughness: .85 }));
   const charcoal = mat(new THREE.MeshStandardMaterial({ color: '#2c3138', roughness: .78 }));
-  const pack = mat(new THREE.MeshStandardMaterial({ color: '#bb569d', roughness: .78 }));
-  const packDark = mat(new THREE.MeshStandardMaterial({ color: '#533563', roughness: .86 }));
-  const accent = mat(new THREE.MeshStandardMaterial({ color: '#697adb', roughness: .81 }));
-  const face = mat(new THREE.MeshStandardMaterial({ color: '#151d28', roughness: .94, side: THREE.DoubleSide }));
+  const visor = mat(new THREE.MeshStandardMaterial({ color: '#13262d', roughness: .32, emissive: '#0c4d58', emissiveIntensity: .35 }));
 
   const root = new THREE.Group();
   root.name = 'Player character';
@@ -106,7 +104,7 @@ export function makeCharacter(): Character {
     ankles.push(ankle);
   }
 
-  // ---- Torso, pack and helmet ---------------------------------------------
+  // ---- Torso and helmet ---------------------------------------------
   const chest = new THREE.Group();
   chest.position.set(0, 1.27, 0);
   chest.rotation.y = STANCE_YAW;
@@ -121,75 +119,24 @@ export function makeCharacter(): Character {
     strap.rotation.z = side * .11;
     add(chest, rbox(suit,.173,.177,.191,.077),side*.222,.129,0);
   }
-  const packGroup = new THREE.Group();
-  packGroup.position.set(0,.005,.21);
-  chest.add(packGroup);
-  add(packGroup,rbox(packDark,.198,.296,.112,.044),0,0,.02);
-  add(packGroup,rbox(accent,.102,.206,.042,.019),0,.011,.087);
-  const spine = new THREE.Group();
-  spine.position.set(-.135,.22,.089);
-  spine.rotation.z = -.13;
-  packGroup.add(spine);
-  add(spine,rbox(packDark,.039,.57,.046,.014),0,.084,.006);
-  add(spine,rbox(accent,.035,.33,.027,.011),-.001,.15,.037);
-  for(const side of [-1,1]){
-    const fork=add(spine,rbox(pack,.029,.116,.036,.013),side*.021,.405,.012);
-    fork.rotation.z=-side*.29;
-  }
-  for (const side of [-1,1]) {
-    const rail = new THREE.Group();
-    rail.position.set(side*.025,.03,.071 + (side+1)*.019);
-    rail.rotation.z=side*.38;
-    packGroup.add(rail);
-    add(rail,rbox(pack,.074,.49,.063,.026),0,0,.006);
-    add(rail,rbox(packDark,.049,.277,.05,.019),0,-.124,.035);
-    add(rail,rbox(accent,.054,.16,.04,.016),0,.227,.011);
-    const tip=add(rail,rbox(pack,.037,.118,.035,.014),side*.023,.312,.013);
-    tip.rotation.z=-side*.28;
-  }
-
   const head = new THREE.Group();
   head.position.set(0, .3, 0);
   chest.add(head);
   add(head,rbox(suitShade,.196,.09,.178,.037),0,-.005,0);
   const helmet = new THREE.Group();
-  helmet.position.y = .21;
+  helmet.position.y = .19;
   head.add(helmet);
-  const radius = .194;
-  const shell = add(helmet,tailored(suit,[[0,-.211],[.157,-.211],[.179,-.204],[.19,-.191],[radius,-.161],[radius,.167],[.191,.188],[.181,.203],[.158,.208],[0,.208]],1,64));
-  shell.name = 'Helmet shell';
-  // Curve the face onto a separate surface with a tiny radial clearance.
-  // Subdivide each stroke along its length so its chords cannot cut into the shell.
-  function faceStroke(name: string, path: THREE.Vector2[], width: number) {
-    const vertices: number[] = [];
-    const offset = radius + .0016;
-    for (let i=0;i<path.length;i++) {
-      const a=path[Math.max(0,i-1)], b=path[Math.min(path.length-1,i+1)];
-      const tangent=b.clone().sub(a).normalize();
-      for (const sign of [-1,1]) {
-        const u=path[i].x-sign*tangent.y*width/2;
-        const y=path[i].y+sign*tangent.x*width/2;
-        vertices.push(Math.sin(u/radius)*offset,y,-Math.cos(u/radius)*offset);
-      }
-    }
-    const indices: number[] = [];
-    for(let i=0;i<path.length-1;i++) indices.push(i*2,i*2+1,i*2+2,i*2+1,i*2+3,i*2+2);
-    const mesh=geo(new THREE.BufferGeometry());
-    mesh.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
-    mesh.setIndex(indices);
-    mesh.computeVertexNormals();
-    add(helmet,new THREE.Mesh(mesh,face)).name=name;
+  const dome = add(helmet, new THREE.Mesh(geo(new THREE.SphereGeometry(.165, 24, 16)), suit));
+  dome.name = 'Helmet shell';
+  dome.scale.set(1, 1.1, 1.04);
+  // The visor band clears the shell's largest scaled radius so it never clips into the dome.
+  const visorRadius = .165 * 1.04 + .004;
+  add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(visorRadius, visorRadius, .085, 32, 1, true, Math.PI - 1.15, 2.3)), visor), 0, -.005, 0).name = 'Helmet visor';
+  for (const side of [-1, 1]) {
+    const ear = add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(.055, .055, .04, 14)), charcoal), side * .165, 0, 0);
+    ear.rotation.z = Math.PI / 2;
   }
-  for(const side of [-1,1]) for(const slope of [-1,1]) {
-    faceStroke('Mask eye',Array.from({length:9},(_,i)=>{
-      const t=i/8-.5;
-      return new THREE.Vector2(side*.083+t*.061,.061+slope*t*.072);
-    }),.018);
-  }
-  faceStroke('Mask smile',Array.from({length:25},(_,i)=>{
-    const t=i/12-1;
-    return new THREE.Vector2(t*.123,-.098+t*t*.059);
-  }),.021);
+  add(helmet, rbox(charcoal, .03, .1, .03, .01), -.12, .17, .03); // small antenna
 
   // ---- Rifle on an aim pivot that follows the camera pitch -------------------
   const rifle = makeRifle();

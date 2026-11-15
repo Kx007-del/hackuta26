@@ -19,39 +19,40 @@ const poses: Array<[string, CharacterPose]> = [
 ];
 const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
-test('the cylindrical mask face clears the shell from both quarters at all review pitches', () => {
+test('visor stays in front of the helmet across both front quarters and aim pitches', () => {
   const c = makeCharacter();
   try {
     const shell = c.root.getObjectByName('Helmet shell') as THREE.Mesh;
-    assert.ok(shell?.isMesh);
-    const mask = shell.parent!;
-    const strokes = mask.children.filter(node => node.name.startsWith('Mask ')) as THREE.Mesh[];
-    assert.equal(strokes.filter(node => node.name === 'Mask eye').length, 4);
-    assert.equal(strokes.filter(node => node.name === 'Mask smile').length, 1);
+    const visor = c.root.getObjectByName('Helmet visor') as THREE.Mesh;
+    assert.ok(shell?.isMesh && visor?.isMesh);
+    const helmet = shell.parent!;
     const ray = new THREE.Raycaster();
     for (const pitch of [-.6, 0, .55]) {
       c.pose({ ...base, pitch });
       c.root.updateMatrixWorld(true);
-      for (const stroke of strokes) {
-        const positions = stroke.geometry.attributes.position;
-        const indices = stroke.geometry.index!;
-        for (let i = 0; i < indices.count; i += 3) {
-          const point = new THREE.Vector3();
-          for (let j = 0; j < 3; j++) {
-            point.add(new THREE.Vector3().fromBufferAttribute(positions, indices.getX(i+j)));
-          }
-          point.multiplyScalar(1/3);
-          const centre = new THREE.Vector3(0,point.y,0);
-          const origin = point.clone().sub(centre).multiplyScalar(2.6).add(centre);
-          const worldOrigin = mask.localToWorld(origin);
-          ray.set(worldOrigin, mask.localToWorld(centre).sub(worldOrigin).normalize());
-          const paint = ray.intersectObject(stroke,false)[0];
-          const white = ray.intersectObject(shell,false)[0];
-          assert.ok(paint && white && white.distance - paint.distance > .0006,
-            `${stroke.name} breaks through the shell at pitch ${pitch}, triangle ${i/3}`);
+      for (let angle = -1.1; angle <= 1.1; angle += .025) {
+        for (const height of [-.045, -.025, .001, .025, .035]) {
+          const heading = Math.PI + angle;
+          const origin = helmet.localToWorld(new THREE.Vector3(Math.sin(heading) * .5, height, Math.cos(heading) * .5));
+          const centre = helmet.localToWorld(new THREE.Vector3(0, height, 0));
+          ray.set(origin, centre.sub(origin).normalize());
+          const shellHit = ray.intersectObject(shell, false)[0];
+          const visorHit = ray.intersectObject(visor, false)[0];
+          assert.ok(shellHit && visorHit, `missing surface at ${pitch}/${angle}/${height}`);
+          assert.ok(shellHit.distance - visorHit.distance > .003,
+            `helmet obscures visor at pitch=${pitch}, angle=${angle}, y=${height}`);
         }
       }
     }
+  } finally { c.dispose(); }
+});
+
+test('the head is an original helmet with no painted face', () => {
+  const c = makeCharacter();
+  try {
+    const names: string[] = [];
+    c.root.traverse(o => names.push(o.name));
+    assert.ok(!names.some(n => /^Mask /.test(n)), 'no mask eyes or smile');
   } finally { c.dispose(); }
 });
 
