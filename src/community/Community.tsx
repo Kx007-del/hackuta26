@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { BADGES, NAME_MAX, TIE_RULES, cleanDisplayName, type BadgeId, type Board, type Leaderboard, type Profile } from '../../packages/progression/rules';
-import { showcaseBoard } from '../../packages/progression/showcase';
+import { BADGES, NAME_MAX, cleanDisplayName, type BadgeId, type Board, type Leaderboard, type Profile } from '../../packages/progression/rules';
 import { fetchBoard, fetchMe, saveName, type MeResponse } from './api';
 import { BadgeIcon } from './BadgeIcon';
 import './community.css';
@@ -73,7 +72,6 @@ function ProgressSummary({ profile }: { profile: Profile }) {
   </div>;
 }
 
-const TIE_TEXT: Record<Board, string> = TIE_RULES;
 const TABS: Array<{ id: Board; label: string; metric: string }> = [
   { id: 'score', label: 'Highest Score', metric: 'Best score' },
   { id: 'streak', label: 'Play Streak', metric: 'Days' },
@@ -81,22 +79,14 @@ const TABS: Array<{ id: Board; label: string; metric: string }> = [
 ];
 
 /** Community section: leaderboards, badge collection, name and the rules. */
-export type BoardMode = 'showcase' | 'live';
 export function CommunitySection({ progression }: { progression: Progression }) {
   const profile = progression.me.state === 'ready' ? progression.me.data.profile : null;
   const meta = progression.me.state === 'ready' ? progression.me.data : null;
-  const [mode, setMode] = useState<BoardMode>('showcase');
   return <section className="showcase-community" aria-labelledby="community-heading">
     <p className="showcase-eyebrow">03 / COMMUNITY</p>
-    <h2 id="community-heading">Leaderboards and badges</h2>
+    <h2 id="community-heading">Leaderboard</h2>
     <div className="community-grid">
-      <div>
-        <div className="board-mode" role="group" aria-label="Which standings to show">
-          <button type="button" aria-pressed={mode === 'showcase'} onClick={() => setMode('showcase')}>Showcase leaderboard <small>example players</small></button>
-          <button type="button" aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Live standings <small>real players</small></button>
-        </div>
-        <Leaderboards version={progression.version} mode={mode} profile={profile} onShowcase={() => setMode('showcase')} />
-      </div>
+      <Leaderboards version={progression.version} />
       <div className="community-side">
         <NameEditor profile={profile} onSaved={progression.setProfile} />
         <BadgeCollection profile={profile} />
@@ -105,7 +95,6 @@ export function CommunitySection({ progression }: { progression: Progression }) 
     <details className="community-rules">
       <summary>How progress works</summary>
       <ul>
-        <li><b>Showcase leaderboard:</b> the example players are fictional and fixed, there to show how the boards work. They aren’t real users or activity, never appear in Live standings and never affect anyone’s badges. Your own row there uses your real progress; its number is a showcase position, not a rank.</li>
         <li><b>XP:</b> 10 XP for each eligible completed attempt, hit or miss, up to 200 XP per UTC day. Each attempt counts once; refreshing or resending it adds nothing.</li>
         <li><b>Eligible attempt:</b> one shot, at least 1.5 seconds after the attempt starts, after moving at least 3 m or turning at least 20°. Attempts less than 3 seconds apart don’t count.</li>
         <li><b>Days:</b> days run on UTC, using the server’s clock. A new day starts at 00:00 UTC ({nextUtcReset()} your time).</li>
@@ -119,21 +108,20 @@ export function CommunitySection({ progression }: { progression: Progression }) 
   </section>;
 }
 
-function Leaderboards({ version, mode, profile, onShowcase }: { version: number; mode: BoardMode; profile: Profile | null; onShowcase: () => void }) {
+function Leaderboards({ version }: { version: number }) {
   const [board, setBoard] = useState<Board>('score');
   const [data, setData] = useState<Load<Leaderboard>>({ state: 'loading' });
   const [retry, setRetry] = useState(0);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const base = useId();
   useEffect(() => {
-    if (mode !== 'live') return;
     const request = new AbortController();
     setData(prev => prev.state === 'ready' && prev.data.board === board ? prev : { state: 'loading' });
     fetchBoard(board, request.signal)
       .then(result => setData({ state: 'ready', data: result }))
       .catch(error => { if (!request.signal.aborted) setData({ state: 'error', message: error instanceof Error ? error.message : 'Unavailable.' }); });
     return () => request.abort();
-  }, [board, version, retry, mode]);
+  }, [board, version, retry]);
 
   function onKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const keys: Record<string, number> = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: TABS.length - 1 };
@@ -148,23 +136,20 @@ function Leaderboards({ version, mode, profile, onShowcase }: { version: number;
   const view: Load<Leaderboard> = data.state === 'ready' && data.data.board !== board ? { state: 'loading' } : data;
 
   return <div className="community-boards">
-    <div role="tablist" aria-label="Leaderboards" className="community-tabs">
+    <div role="tablist" aria-label="Leaderboard" className="community-tabs">
       {TABS.map((t, i) => <button key={t.id} ref={el => { tabRefs.current[i] = el; }} type="button" role="tab" id={`${base}-tab-${t.id}`}
         aria-selected={board === t.id} aria-controls={`${base}-panel`} tabIndex={board === t.id ? 0 : -1}
         onClick={() => setBoard(t.id)} onKeyDown={event => onKey(event, i)}>{t.label}</button>)}
     </div>
-    <div role="tabpanel" id={`${base}-panel`} aria-labelledby={`${base}-tab-${board}`} className={`community-panel is-${mode}`} tabIndex={0}>
-      {mode === 'showcase' && <ShowcaseTable board={board} metric={tab.metric} label={tab.label} profile={profile} />}
-      {mode === 'live' && <>
+    <div role="tabpanel" id={`${base}-panel`} aria-labelledby={`${base}-tab-${board}`} className="community-panel" tabIndex={0}>
       {view.state === 'loading' && <p className="community-note" role="status">Loading the {tab.label} board…</p>}
       {view.state === 'error' && <p className="community-note" role="alert">{view.message} <button type="button" className="community-link" onClick={() => setRetry(r => r + 1)}>Try again</button></p>}
-      {view.state === 'ready' && <BoardTable board={view.data} metric={tab.metric} onShowcase={onShowcase} />}
-      </>}
+      {view.state === 'ready' && <BoardTable board={view.data} metric={tab.metric} />}
     </div>
   </div>;
 }
 
-function BoardTable({ board, metric, onShowcase }: { board: Leaderboard; metric: string; onShowcase: () => void }) {
+function BoardTable({ board, metric }: { board: Leaderboard; metric: string }) {
   const empty: Record<Board, string> = {
     score: 'No ranked scores yet. Finish an attempt with AI scoring on to set the first one.',
     streak: 'No active streaks yet. Finish an eligible attempt today to start one.',
@@ -175,7 +160,6 @@ function BoardTable({ board, metric, onShowcase }: { board: Leaderboard; metric:
     {board.entries.length === 0
       ? <div className="community-empty">
           <p>{empty[board.board]}</p>
-          <p>Live standings only list real players. <button type="button" className="community-link" onClick={onShowcase}>See the showcase leaderboard</button> to see how the boards look with example players.</p>
         </div>
       : <table className="community-table">
           <caption className="visually-hidden">{TABS.find(t => t.id === board.board)?.label} top {board.entries.length}</caption>
@@ -192,36 +176,7 @@ function BoardTable({ board, metric, onShowcase }: { board: Leaderboard; metric:
     {board.you && !youShown && <p className="community-position">
       {board.you.rank ? <>Your position: <b>#{board.you.rank}</b> of {board.total} · {metric.toLowerCase()} {board.you.value}</> : 'You’re not on this board yet.'}
     </p>}
-    <p className="community-note">Live standings: real guest players on this server. Ties: {board.tieRule}</p>
-  </>;
-}
-
-/** Fixed example players plus the visitor's real progress, sorted by the live rules. Nothing here is saved. */
-function ShowcaseTable({ board, metric, label, profile }: { board: Board; metric: string; label: string; profile: Profile | null }) {
-  const rows = showcaseBoard(board, profile);
-  const you = rows.find(r => r.kind === 'you');
-  return <>
-    <p className="showcase-banner"><b>Example players.</b> These players and results are fictional, for illustration only. They aren’t real users or real activity.</p>
-    <table className="community-table">
-      <caption className="visually-hidden">{label} showcase leaderboard with example players</caption>
-      <thead><tr><th scope="col">Showcase position</th><th scope="col">Player</th><th scope="col">{metric}</th><th scope="col">Badges</th></tr></thead>
-      <tbody>
-        {rows.map(row => <tr key={`${row.kind}-${row.position}`} className={row.kind === 'you' ? 'is-you is-real' : 'is-example'}>
-          <td>{row.position}</td>
-          <td>{row.kind === 'you'
-            ? <><span className="community-real-tag">You — real progress</span> {row.name}</>
-            : <>{row.name} <span className="community-example-tag">Example</span></>}</td>
-          <td>{row.value}</td>
-          <td><BadgeStrip ids={row.badges} /></td>
-        </tr>)}
-      </tbody>
-    </table>
-    <p className="community-position">
-      {you ? <>Your real progress would sit at <b>showcase position {you.position}</b> of {rows.length} among these examples. This isn’t a global rank: see Live standings for that.</>
-        : profile ? 'You’re not on this board yet. Your row appears here once you have real progress for it.'
-        : 'Finish an eligible attempt and your real progress will appear here as “You — real progress”.'}
-    </p>
-    <p className="community-note">Sorted with the same rules as Live standings. Ties: {TIE_TEXT[board]}</p>
+    <p className="community-note">Ties: {board.tieRule}</p>
   </>;
 }
 
