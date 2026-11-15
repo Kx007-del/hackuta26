@@ -64,7 +64,7 @@ export default function AccountPage({ mode }: { mode: 'login' | 'signup' | 'acco
       <h1 id="account-heading">{session?.account ? <>WELCOME BACK.<br /><em>RUN IT BACK.</em></> : <>MAKE YOUR<br /><em>MARK.</em></>}</h1>
       <p>One account for your shots, progress and community events.</p>
       <ul><li>Keep your XP, streaks and achievements together.</li><li>Return to your profile from another device.</li><li>Manage the events you create.</li></ul>
-      <a href="/practice" className="auth-guest-link">{session?.account ? 'Back to practice ↗' : 'Just here to play? Continue as guest ↗'}</a>
+      <a href={session?.account ? '/practice' : '/'} className="auth-guest-link">{session?.account ? 'Back to practice ↗' : 'Just here to play? Continue as guest ↗'}</a>
     </div>
     <div className="auth-card">
       {loadError && <p role="alert">{loadError}</p>}
