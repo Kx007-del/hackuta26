@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { clipShoulderCamera, makeHillsideScene, RAMP_HEADING, rayHitsTarget, spawnPlayer, stepPlayer, type PlayerState } from './hillsideScene';
+import { makeShotEffects, shotImpactPoint } from './effects';
 import { createAttemptRecorder, newAttemptId, readConsent, ScoreError, submitScore, writeConsent, type AiConsent, type ScoreResponse } from '../showcase-scoring/client';
 import type { AttemptTelemetry } from '../showcase-scoring/telemetry';
 
@@ -106,6 +107,11 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
     const rendererInfo = gl.getExtension('WEBGL_debug_renderer_info');
     const software = !!rendererInfo && /swiftshader|llvmpipe|software rasterizer/i.test(gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL));
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, software ? .9 : 1.6));
+    // Real-time sun shadows on hardware GPUs; software renderers keep the cheap blob shadow.
+    renderer.shadowMap.enabled = !software;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const effects = makeShotEffects(world.scene);
+    const muzzlePoint = new THREE.Vector3(), impactPoint = new THREE.Vector3();
 
     const keys = new Set<string>();
     const pivot = new THREE.Vector3();
@@ -117,7 +123,7 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
     let player: PlayerState = spawnPlayer();
     let heading = RAMP_HEADING, pitch = -.10;
     let gait = 0, walkWeight = 0, jumpQueued = false, cooldown = 0, shotId = 0, targetDown = false, fall = 0;
-    let lookHeld = 0;
+    let lookHeld = 0, kick = 0;
     let frame = 0, lastTime = performance.now(), disposed = false;
     // Attempt tracking for scoring: one shot per attempt, measured from the last reset.
     const recorder = createAttemptRecorder(canvas);
@@ -131,7 +137,8 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
       world.mannequin.position.set(x, y, z);
       world.mannequin.rotation.y = -heading;
       world.playerShadow.position.set(x, y + .024, z);
-      world.playerShadow.visible = player.grounded;
+      world.playerShadow.visible = player.grounded && !renderer.shadowMap.enabled;
+      world.updateLighting(x, y, z);
       world.character.pose({ grounded: player.grounded, gait, walkWeight, vy: player.vy, pitch, time: performance.now() / 1000 });
       world.target.rotation.x = -fall * Math.PI / 2;
 
@@ -143,7 +150,8 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
       cameraPosition.y -= dip;
       world.mannequin.visible = pivot.distanceToSquared(cameraPosition) > .65 ** 2;
       camera.position.copy(cameraPosition);
-      camera.rotation.set(pitch, -heading, 0, 'YXZ');
+      // A short recoil kick and shake after each shot (visual only; the shot ray was already taken).
+      camera.rotation.set(pitch + kick * .03, -heading + kick * (Math.random() - .5) * .012, 0, 'YXZ');
       camera.updateMatrixWorld();
       placeMarker();
       renderer.render(world.scene, camera);
@@ -180,6 +188,8 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
       pitch = -.10;
       gait = walkWeight = cooldown = fall = dip = 0;
       world.character.reset();
+      effects.reset();
+      kick = 0;
       fov = CAMERA_FOV;
       jumpQueued = targetDown = false;
       setShot(undefined);
@@ -206,6 +216,14 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
       if (hit) targetDown = true;
       setShot({ hit, distance, airborne: !player.grounded, id: ++shotId });
       world.character.fire();
+      // Tracer from the rifle muzzle to the target (hit) or to where the ray meets the ground (miss).
+      world.character.rifle.muzzle.getWorldPosition(muzzlePoint);
+      if (hit) {
+        impactPoint.copy(world.target.position).setY(world.target.position.y + 1.2).sub(camera.position);
+        impactPoint.copy(camera.position).addScaledVector(aim, impactPoint.dot(aim));
+      } else shotImpactPoint(camera.position, aim, impactPoint);
+      effects.shot(muzzlePoint, impactPoint, hit);
+      kick = 1;
       const shotAt = performance.now();
       const telemetry: AttemptTelemetry = {
         version: 1, shots: 1, ads: false, hit,
@@ -332,6 +350,8 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
       player = stepPlayer(player, { forward, right, heading, jump: jumpQueued }, dt);
       jumpQueued = false;
       world.character.tick(dt);
+      effects.tick(dt);
+      kick = THREE.MathUtils.damp(kick, 0, 14, dt);
       const speed = Math.hypot(player.vx, player.vz);
       const moving = player.grounded && speed > .3;
       if (moving) gait += dt * speed * 1.7;
@@ -388,6 +408,7 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
       window.removeEventListener('blur', clearInput);
       if (document.pointerLockElement === canvas) document.exitPointerLock();
       controls.current = null;
+      effects.dispose();
       world.dispose();
       renderer.dispose();
       canvas.remove();
@@ -401,7 +422,7 @@ export default function HillsidePreview({ onExit, onScored, competition, onEvent
   return <div className="hillside-preview">
     <div className="hillside-stage" ref={stage}>
       <div className="hillside-canvas" ref={mount} />
-      {!error && <span key={shot?.id ?? 0} className={`hillside-reticle${shot ? ' is-firing' : ''}`} aria-hidden="true"><i/><i/><i/><i/></span>}
+      {!error && <span key={shot?.id ?? 0} className={`hillside-reticle${shot ? ' is-firing' : ''}${shot?.hit ? ' is-hit' : ''}`} aria-hidden="true"><i/><i/><i/><i/></span>}
       {!error && shot && <p key={`shot-${shot.id}`} className={`hillside-result${shot.hit ? ' is-hit' : ''}`} role="status">
         {shot.hit ? <>ELIMINATED <small>{Math.round(shot.distance)} m{shot.airborne ? ' · IN THE AIR' : ''}</small></> : 'MISS'}
       </p>}
