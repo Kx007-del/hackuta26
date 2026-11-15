@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { isLegacyShowcaseLink, SHOWCASE_REFERENCE } from './showcase';
+import { CommunitySection, ProgressPanel, useProgression } from './community/Community';
 import './fortnite-showcase.css';
 
 const HillsidePreview = lazy(() => import('../packages/gameplay/HillsidePreview'));
@@ -8,6 +9,7 @@ export default function FortniteShowcase({ search = window.location.search }: { 
   const [playing, setPlaying] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const legacyLink = isLegacyShowcaseLink(search);
+  const progression = useProgression();
 
   return <div className="fortnite-showcase">
     <header className="showcase-header">
@@ -39,14 +41,16 @@ export default function FortniteShowcase({ search = window.location.search }: { 
       <section className="showcase-practice" aria-labelledby="practice-heading">
         <p className="showcase-eyebrow">02 / SCENE PREVIEW</p>
         <h2 id="practice-heading">Try it Yourself</h2>
-        <p>Run the ramp, jump off the landing, turn toward the hill and take the shot. The target stands an estimated 61 m from spawn.</p>
-        <p className="showcase-muted">Running, jumping and hip-fire are playable. Scoring and challenges are still being built.</p>
+        <p>Run the ramp, jump off the landing, turn toward the hill and take the shot. The target stands about 61 m from the landing where the reference shot is taken.</p>
+        <p className="showcase-muted">One shot per attempt. Each attempt is scored against the reference and earns XP toward the community boards below.</p>
         {!playing
           ? <button type="button" className="showcase-start" onClick={() => setPlaying(true)}>START PRACTICE PREVIEW ↗</button>
           : <Suspense fallback={<p role="status">Loading hillside preview…</p>}>
-              <HillsidePreview />
+              <HillsidePreview onScored={progression.refresh} />
             </Suspense>}
+        <ProgressPanel progression={progression} />
       </section>
+      <CommunitySection progression={progression} />
     </main>
     <footer className="showcase-footer">An original, game-inspired practice prototype. Reference footage shown for the showcase. No game affiliation implied.</footer>
   </div>;

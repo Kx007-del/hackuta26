@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { clipShoulderCamera, makeHillsideScene, RAMP_HEADING, rayHitsTarget, spawnPlayer, stepPlayer, type PlayerState } from './hillsideScene';
-import { createAttemptRecorder, readConsent, submitScore, writeConsent, type AiConsent, type ScoreResponse } from '../showcase-scoring/client';
+import { createAttemptRecorder, newAttemptId, readConsent, submitScore, writeConsent, type AiConsent, type ScoreResponse } from '../showcase-scoring/client';
 import type { AttemptTelemetry } from '../showcase-scoring/telemetry';
+import { BADGES } from '../progression/rules';
 
 type PreviewControls = { reset: () => void };
 type Scoring = { state: 'idle' } | { state: 'scoring' } | { state: 'done'; result: ScoreResponse } | { state: 'error'; message: string };
@@ -22,7 +23,9 @@ const KEY_TILT = 1.4;
 const FIRE_COOLDOWN = .25;
 const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 
-export default function HillsidePreview() {
+export default function HillsidePreview({ onScored }: { onScored?: (result: ScoreResponse) => void } = {}) {
+  const onScoredRef = useRef(onScored);
+  onScoredRef.current = onScored;
   const mount = useRef<HTMLDivElement>(null);
   const controls = useRef<PreviewControls | null>(null);
   const marker = useRef<HTMLDivElement>(null);
@@ -102,7 +105,7 @@ export default function HillsidePreview() {
     const recorder = createAttemptRecorder(canvas);
     setRecordingSupported(recorder.supported);
     let attemptStart = performance.now(), startHeading = RAMP_HEADING, lastTurnAt = performance.now(), lastHeading = RAMP_HEADING;
-    let shotsThisAttempt = 0, scoreRequest: AbortController | undefined;
+    let shotsThisAttempt = 0, scoreRequest: AbortController | undefined, attemptId = newAttemptId();
     const startRecording = () => { if (consentRef.current === 'yes') recorder.start(); else recorder.cancel(); };
 
     function repaint() {
@@ -165,6 +168,7 @@ export default function HillsidePreview() {
       scoreRequest?.abort();
       scoreRequest = undefined;
       shotsThisAttempt = 0;
+      attemptId = newAttemptId();
       attemptStart = lastTurnAt = performance.now();
       startHeading = lastHeading = heading;
       setScoring({ state: 'idle' });
@@ -191,14 +195,15 @@ export default function HillsidePreview() {
         shooter: { x: player.x, y: player.y, z: player.z, grounded: player.grounded },
         ray: { origin: [camera.position.x, camera.position.y, camera.position.z], direction: [aim.x, aim.y, aim.z] },
       };
-      const request = new AbortController();
+      const request = new AbortController(), thisAttempt = attemptId;
       scoreRequest = request;
       setScoring({ state: 'scoring' });
       window.setTimeout(async () => {
         if (disposed || request.signal.aborted) return;
         const clip = consentRef.current === 'yes' ? await recorder.finish() : undefined;
         try {
-          const result = await submitScore(telemetry, clip?.blob, consentRef.current, request.signal);
+          const result = await submitScore(telemetry, clip?.blob, consentRef.current, request.signal, thisAttempt);
+          if (result.progress) onScoredRef.current?.(result);
           if (!request.signal.aborted && !disposed) setScoring({ state: 'done', result });
         } catch (cause) {
           if (!request.signal.aborted && !disposed) setScoring({ state: 'error', message: cause instanceof Error ? cause.message : 'Scoring is unavailable right now.' });
@@ -423,5 +428,17 @@ function ScoreResult({ result }: { result: ScoreResponse }) {
         : ai.status === 'declined' ? 'Scored on game data only.'
         : `${UNAVAILABLE[ai.reason] ?? 'AI scoring is unavailable right now.'} Scored on game data only.`}
     </p>
+    {result.progress && <AttemptProgressNote progress={result.progress} />}
   </div>;
+}
+
+const BADGE_NAMES: Record<string, string> = Object.fromEntries(BADGES.map(b => [b.id, b.name]));
+function AttemptProgressNote({ progress }: { progress: NonNullable<ScoreResponse['progress']> }) {
+  if (progress.status === 'not-counted') return <p className="showcase-score__progress is-muted">Not counted toward progress: {progress.reason}</p>;
+  const xp = progress.xpAwarded > 0 ? `+${progress.xpAwarded} XP` : 'Daily XP cap reached (0 XP)';
+  return <p className="showcase-score__progress">
+    <b>{xp}</b> · {progress.xpToday}/{progress.xpCap} XP today · streak {progress.currentStreak} day{progress.currentStreak === 1 ? '' : 's'}
+    {progress.ranked ? ' · counts for Highest Score' : ` · ${progress.unrankedReason ?? 'Not ranked.'}`}
+    {progress.newBadges.length > 0 && <> · <strong>New badge: {progress.newBadges.map(id => BADGE_NAMES[id] ?? id).join(', ')}</strong></>}
+  </p>;
 }
