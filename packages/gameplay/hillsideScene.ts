@@ -234,9 +234,32 @@ export const targetBase = (() => {
   return new THREE.Vector3(x, terrainHeight(x, z), z);
 })();
 
-/** Solid scenery a shot cannot pass through: terrain, the wooden build and the hut. */
+// The ground mesh is a 250 m plane with 170×170 segments whose vertices sit on terrainHeight.
+const GROUND_SIZE = 250;
+const GROUND_SEGMENTS = 170;
+
+/**
+ * Height of the ground surface as rendered: the same triangles the GPU draws, not the smooth
+ * formula. Shots must use this, otherwise a target that is visible over a crest can be "blocked".
+ */
+export function renderedTerrainHeight(x: number, z: number) {
+  const step = GROUND_SIZE / GROUND_SEGMENTS, half = GROUND_SIZE / 2;
+  const gx = (x + half) / step, gz = (z + half) / step;
+  if (gx < 0 || gz < 0 || gx >= GROUND_SEGMENTS || gz >= GROUND_SEGMENTS) return terrainHeight(x, z);
+  const ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+  const h = (i: number, j: number) => terrainHeight(i * step - half, j * step - half);
+  // PlaneGeometry splits each cell along the (ix, iz+1)–(ix+1, iz) diagonal.
+  if (fx + fz <= 1) {
+    const a = h(ix, iz);
+    return a + (h(ix + 1, iz) - a) * fx + (h(ix, iz + 1) - a) * fz;
+  }
+  const c = h(ix + 1, iz + 1);
+  return c + (h(ix, iz + 1) - c) * (1 - fx) + (h(ix + 1, iz) - c) * (1 - fz);
+}
+
+/** Solid scenery a shot cannot pass through: terrain (as rendered), the wooden build and the hut. */
 function blocksShot(x: number, y: number, z: number) {
-  if (y < terrainHeight(x, z)) return true;
+  if (y < renderedTerrainHeight(x, z)) return true;
   const deck = deckHeight(x, z);
   if (deck !== undefined && y < deck) return true;
   return y < hutTop && overlapsHut(x, z, 0);
@@ -357,7 +380,7 @@ export function makeHillsideScene() {
   bounce.position.set(38, 8, -25);
   scene.add(bounce);
 
-  const ground = geometry(new THREE.PlaneGeometry(250, 250, 170, 170));
+  const ground = geometry(new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEGMENTS, GROUND_SEGMENTS));
   ground.rotateX(-Math.PI / 2);
   const positions = ground.attributes.position;
   const colors = new Float32Array(positions.count * 3);
