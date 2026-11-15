@@ -35,6 +35,8 @@ export type AttemptResult = {
   frames: ReplayFrame[];
   shotTimeMs: number;
   mechanicState?: MechanicState;
+  /** True when the ALIGN AIM practice assist was used during this attempt. */
+  assisted?: boolean;
 };
 export type Relay = {
   id: string;

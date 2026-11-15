@@ -2,7 +2,7 @@ import type { ArenaId, AttemptResult } from '../../shared/contracts';
 import type { FumbleKind, LeaderboardCategory } from './scoring';
 
 export type LeaderboardResponse = { categories: LeaderboardCategory[]; attempts: number };
-export type PostedAttempt = { id: string; success: boolean; missMeters: number; fumble: FumbleKind | null };
+export type PostedAttempt = { id: string; success: boolean; missMeters: number; fumble: FumbleKind | null; ranked: boolean };
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);

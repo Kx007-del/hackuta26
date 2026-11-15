@@ -96,7 +96,7 @@ export default function Leaderboard({ refreshKey = 0, arenaId, compact = false, 
               <p className="leaderboard__empty">No entries yet. Turn on “Post my attempts” in the arena and take the first spot.</p>
             )}
           </div>
-          <p className="leaderboard__note">Scores are reported by players’ browsers and are not verified. {data!.attempts} attempt{data!.attempts === 1 ? '' : 's'} posted.</p>
+          <p className="leaderboard__note">Scores are reported by players’ browsers and are not verified. Shots using the Align Aim practice assist are not ranked. {data!.attempts} attempt{data!.attempts === 1 ? '' : 's'} posted.</p>
         </>
       )}
     </section>

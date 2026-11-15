@@ -30,6 +30,7 @@ export function validateLeaderboardAttempt(value: unknown): AttemptResult {
   if (!record(value) || !validConfig(value.config)) throw new InputError('Invalid challenge settings.');
   if (typeof value.id !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(value.id)) throw new InputError('Invalid attempt.');
   if (typeof value.success !== 'boolean' || typeof value.targetHit !== 'boolean' || typeof value.airborneAtShot !== 'boolean') throw new InputError('Invalid attempt.');
+  if (value.assisted !== undefined && typeof value.assisted !== 'boolean') throw new InputError('Invalid attempt.');
   if (!bounded(value.rotationDegrees, 0, 3600) || !bounded(value.durationMs, 1, 60000) || !bounded(value.shotTimeMs, 0, value.durationMs)) throw new InputError('Invalid attempt timing.');
   if (!Array.isArray(value.frames) || value.frames.length < 1 || value.frames.length > 2000) throw new InputError('Invalid replay frames.');
   const frames = value.frames.map((frame: unknown) => {
@@ -49,6 +50,7 @@ export function validateLeaderboardAttempt(value: unknown): AttemptResult {
     success: value.success, targetHit: value.targetHit, airborneAtShot: value.airborneAtShot,
     rotationDegrees: value.rotationDegrees, durationMs: value.durationMs, shotTimeMs: value.shotTimeMs, frames,
     ...(mechanicState === undefined ? {} : { mechanicState }),
+    ...(value.assisted === undefined ? {} : { assisted: value.assisted }),
   };
   if (attempt.success) {
     const consistent = attempt.targetHit && attempt.rotationDegrees >= config.requiredSpinDegrees && mechanicSatisfied(attempt.config, mechanicState, attempt.airborneAtShot);
@@ -58,11 +60,11 @@ export function validateLeaderboardAttempt(value: unknown): AttemptResult {
   return attempt;
 }
 
-type Row = { id: string; player: string; arena_id: string; template_id: string; target_distance: number; success: number; miss_m: number; rotation: number; shot_ms: number; fumble: string | null; created_at: string };
+type Row = { id: string; player: string; arena_id: string; template_id: string; target_distance: number; success: number; miss_m: number; rotation: number; shot_ms: number; fumble: string | null; assisted: number | null; created_at: string };
 const toRow = (r: Row): LeaderboardRow => ({
   id: r.id, player: r.player, arenaId: r.arena_id as ArenaId, templateId: r.template_id as LeaderboardRow['templateId'],
   targetDistance: r.target_distance, success: r.success === 1, missMeters: r.miss_m, rotationDegrees: r.rotation,
-  shotTimeMs: r.shot_ms, fumble: r.fumble as FumbleKind | null, createdAt: r.created_at,
+  shotTimeMs: r.shot_ms, fumble: r.fumble as FumbleKind | null, assisted: r.assisted === null ? null : r.assisted === 1, createdAt: r.created_at,
 });
 
 export function registerLeaderboardApi(app: Express, options: { databasePath?: string; maxRows?: number; now?: () => Date } = {}): () => void {
@@ -78,7 +80,10 @@ export function registerLeaderboardApi(app: Express, options: { databasePath?: s
       target_distance INTEGER NOT NULL, success INTEGER NOT NULL, miss_m REAL NOT NULL, rotation REAL NOT NULL,
       shot_ms REAL NOT NULL, fumble TEXT, created_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS leaderboard_attempts_created ON leaderboard_attempts (created_at);`);
-  const insert = db.prepare('INSERT OR IGNORE INTO leaderboard_attempts (id, player, arena_id, template_id, target_distance, success, miss_m, rotation, shot_ms, fumble, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  // Forward-only column add for tables created before assist tracking; existing rows stay NULL (unknown, unranked).
+  const columns = db.prepare('PRAGMA table_info(leaderboard_attempts)').all() as Array<{ name: string }>;
+  if (!columns.some(c => c.name === 'assisted')) db.exec('ALTER TABLE leaderboard_attempts ADD COLUMN assisted INTEGER');
+  const insert = db.prepare('INSERT OR IGNORE INTO leaderboard_attempts (id, player, arena_id, template_id, target_distance, success, miss_m, rotation, shot_ms, fumble, assisted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const trim = db.prepare('DELETE FROM leaderboard_attempts WHERE id IN (SELECT id FROM leaderboard_attempts ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET ?)');
   const all = db.prepare('SELECT * FROM leaderboard_attempts');
   const byArena = db.prepare('SELECT * FROM leaderboard_attempts WHERE arena_id = ?');
@@ -92,9 +97,9 @@ export function registerLeaderboardApi(app: Express, options: { databasePath?: s
       const attempt = validateLeaderboardAttempt(req.body.attempt);
       const m = attemptMetrics(attempt);
       const createdAt = now().toISOString();
-      const result = insert.run(attempt.id, player, attempt.config.arenaId, attempt.config.templateId, attempt.config.targetDistance, m.success ? 1 : 0, m.missMeters, m.rotationDegrees, m.shotTimeMs, m.fumble, createdAt);
+      const result = insert.run(attempt.id, player, attempt.config.arenaId, attempt.config.templateId, attempt.config.targetDistance, m.success ? 1 : 0, m.missMeters, m.rotationDegrees, m.shotTimeMs, m.fumble, attempt.assisted === undefined ? null : attempt.assisted ? 1 : 0, createdAt);
       if (result.changes > 0) trim.run(maxRows);
-      res.status(result.changes > 0 ? 201 : 200).json({ id: attempt.id, success: m.success, missMeters: m.missMeters, fumble: m.fumble });
+      res.status(result.changes > 0 ? 201 : 200).json({ id: attempt.id, success: m.success, missMeters: m.missMeters, fumble: m.fumble, ranked: attempt.assisted === false });
     } catch (error) {
       if (error instanceof InputError) fail(res, error.message);
       else { console.error('Leaderboard save failed.'); fail(res, 'Unable to save to the leaderboard. Please try again.', 500); }
