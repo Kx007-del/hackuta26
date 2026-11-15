@@ -1,5 +1,7 @@
 # Hackuta26 five-role team
 
+Current product scope is Fortnite-only with one fixed supplied video. Read docs/showcase/CLEANUP.md and the README before historical plans below. The human explicitly authorized Codex 1 to implement/release this cleanup to Render. Future scene tasks still require manual assignments and their own integration authorization. Do not resume automation or old three-game tasks.
+
 Codex 1 coordinates ideas, architecture, roadmap, assignments, review disposition and final decisions. Human instructions take precedence.
 
 - Codex 1: docs/, shared/, root configuration and integration.

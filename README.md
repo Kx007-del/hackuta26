@@ -1,4 +1,12 @@
-# Hackuta26 — FaZe Run It Back
+# Hackuta26 — Fortnite showcase
+
+**Current scope supersedes the historical guide below.** The public site is Fortnite-only with one fixed supplied recording. Game selection, arbitrary clip inputs, relays and leaderboards are no longer exposed. Old game/relay links open the Fortnite showcase with a notice. The old multi-game App and server contracts are retained as inactive compatibility code; no player records were deleted.
+
+The reference plays from `/showcase/fortnite-reference.mp4`; its exact hash is in [reference.json](docs/showcase/reference.json). Current gameplay is still the clearly labeled Buildyard prototype. The matching hillside, preplaced cone, third-person camera and revised controls are unfinished.
+
+Render hosts https://hackuta26.onrender.com/ from `build/five-agent-h26`. Verify release commits at `/api/health`. Current validation: 100 application tests, 9 relay tests and production build pass. Automation remains stopped. The next manual assignment is [Codex 3's updated prompt](docs/showcase/CODEX-3-NEXT-PROMPT.md). See [cleanup details](docs/showcase/CLEANUP.md).
+
+## Historical multi-game guide (not the current public experience)
 
 Three original, game-inspired browser environments with reference clip uploads, guided recreation, harder remixes, two-person relays and recorded squad replays.
 
