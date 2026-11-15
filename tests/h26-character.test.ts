@@ -19,6 +19,34 @@ const poses: Array<[string, CharacterPose]> = [
 ];
 const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
+test('visor stays in front of the helmet across both front quarters and aim pitches', () => {
+  const c = makeCharacter();
+  try {
+    const shell = c.root.getObjectByName('Helmet shell') as THREE.Mesh;
+    const visor = c.root.getObjectByName('Helmet visor') as THREE.Mesh;
+    assert.ok(shell?.isMesh && visor?.isMesh);
+    const helmet = shell.parent!;
+    const ray = new THREE.Raycaster();
+    for (const pitch of [-.6, 0, .55]) {
+      c.pose({ ...base, pitch });
+      c.root.updateMatrixWorld(true);
+      for (let angle = -1.1; angle <= 1.1; angle += .025) {
+        for (const height of [-.045, -.025, .001, .025, .035]) {
+          const heading = Math.PI + angle;
+          const origin = helmet.localToWorld(new THREE.Vector3(Math.sin(heading) * .5, height, Math.cos(heading) * .5));
+          const centre = helmet.localToWorld(new THREE.Vector3(0, height, 0));
+          ray.set(origin, centre.sub(origin).normalize());
+          const shellHit = ray.intersectObject(shell, false)[0];
+          const visorHit = ray.intersectObject(visor, false)[0];
+          assert.ok(shellHit && visorHit, `missing surface at ${pitch}/${angle}/${height}`);
+          assert.ok(shellHit.distance - visorHit.distance > .003,
+            `helmet obscures visor at pitch=${pitch}, angle=${angle}, y=${height}`);
+        }
+      }
+    }
+  } finally { c.dispose(); }
+});
+
 test('both hands stay on the rifle in every pose (no floating hands, no stretched arms)', () => {
   const c = makeCharacter();
   try {
