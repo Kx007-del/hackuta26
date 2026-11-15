@@ -90,7 +90,11 @@ async function execute(role, session, task, control) {
   };
   const fresh = readControl();
   if (exiting || fresh.runId !== control.runId || !canRun(fresh, task)) throw new Error('Control changed before publication; local work preserved');
-  if (/\bBLOCKED\b|permission denied|quota (?:exceeded|limit)/i.test(reply.text)) throw new Error('Agent reported a blocker; inspect local reply/logs');
+  if (/\bBLOCKED\b|permission denied|quota (?:exceeded|limit)/i.test(reply.text)) {
+    const error = new Error('Agent reported a blocker; see the preserved provider handoff');
+    error.handoff = { model: reply.model, text: redact(reply.text), baseSha: startSha };
+    throw error;
+  }
   const pending = changedPaths(git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], root));
   const committed = git(['diff', '--name-only', '-z', startSha, 'HEAD'], root).split('\0').filter(Boolean);
   assertOwned(role, [...new Set([...pending, ...committed])], task.kind);
@@ -132,9 +136,10 @@ async function worker(role) {
       if (task) {
         try { await execute(role, session, task, control); }
         catch (error) {
-          record(role, session, task.id, { status: 'failed', finishedAt: now(), error: redact(error.message) });
+          record(role, session, task.id, { status: 'failed', finishedAt: now(), error: redact(error.message), ...(error.handoff ? { handoff: error.handoff } : {}) });
           pauseFailure(`${role} stopped on ${task.id}: ${error.message}`, control.runId);
-          throw error;
+          console.error(`${role}: ${redact(error.message)}. Queue blocked; listener remains online without retrying the task.`);
+          if (args.includes('--once')) process.exitCode = 1;
         }
       }
       if (args.includes('--once') || exiting || control.status === 'stopped') break;
