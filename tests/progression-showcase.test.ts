@@ -244,9 +244,10 @@ test('wiring: the client retries with the same attempt id and refreshes progress
   const preview = readFileSync(new URL('../packages/gameplay/HillsidePreview.tsx', import.meta.url), 'utf8');
   assert.match(preview, /void send\(submission, again\)/, 'retry re-sends the same submission');
   assert.match(preview, /submission\.attemptId/);
-  assert.match(preview, /if \(result\.progress\) onScoredRef\.current\?\.\(result\)/);
+  assert.match(preview, /callbacks\.current\.onScored\?\.\(result\)/);
   const page = readFileSync(new URL('../src/FortniteShowcase.tsx', import.meta.url), 'utf8');
-  assert.match(page, /<HillsidePreview onScored=\{progression\.refresh\} \/>/);
+  assert.match(page, /<HillsidePreview onExit=\{exitWithReport\} \/>/);
+  assert.match(page, /useProgression\(\)/, 'results and global boards load the persisted guest progress');
   const community = readFileSync(new URL('../src/community/Community.tsx', import.meta.url), 'utf8');
   assert.match(community, /\[board, version, retry, mode\]/, 'live boards refetch after each game');
   assert.match(community, /Example players\./);

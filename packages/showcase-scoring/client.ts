@@ -80,15 +80,16 @@ export function newAttemptId() {
 }
 
 /** Sends the attempt for scoring. The clip is only sent when the player allowed AI scoring. */
-export async function submitScore(telemetry: AttemptTelemetry, clip: Blob | undefined, consent: AiConsent, signal?: AbortSignal, attemptId?: string): Promise<ScoreResponse> {
+export async function submitScore(telemetry: AttemptTelemetry, clip: Blob | undefined, consent: AiConsent, signal?: AbortSignal, attemptId?: string, competition?: { eventId: string; ticketId: string }): Promise<ScoreResponse> {
   const json = JSON.stringify(telemetry);
   const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const sendClip = consent === 'yes' && clip && clip.size > 0 && clip.size <= 8 * 1024 * 1024;
+  const sendClip = !competition && consent === 'yes' && clip && clip.size > 0 && clip.size <= 8 * 1024 * 1024;
   const response = await fetch('/api/showcase/score', {
     method: 'POST',
     headers: {
       'x-score-telemetry': encoded,
       'x-score-ai': sendClip ? 'yes' : 'no',
+      ...(competition ? { 'x-competition-id': competition.eventId, 'x-competition-attempt': competition.ticketId } : {}),
       ...(attemptId ? { 'x-attempt-id': attemptId } : {}),
       ...(sendClip ? { 'Content-Type': clip!.type || 'video/webm' } : {}),
     },
