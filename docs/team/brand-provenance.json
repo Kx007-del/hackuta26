@@ -30,6 +30,11 @@
       "asset": "public/brand/tiger-red.jpg",
       "source": "assets/brand-source/patterns/FaZe Tiger Camo/FaZe_Tiger_Camo_RedBlack.jpg",
       "sha256": "a8b632a57a1ff9c9006f4006f146d8795fe7ed7c9403dc6ca9fedcfca5a702da"
+    },
+    {
+      "asset": "public/brand/FaZed-Sans.otf",
+      "source": "assets/brand-source/fonts/Custom FaZe Font (FaZed)/Sample_FaZed_Sans.otf",
+      "sha256": "abd82504bdf1f85829e0b580e9719135cdb13f26e9d29ce6653a13bb1c948ef1"
     }
   ]
 }

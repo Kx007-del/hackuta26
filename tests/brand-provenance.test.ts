@@ -11,7 +11,7 @@ test('all served brand files are byte-identical to the supplied FaZe toolkit',()
   assert.equal(manifest.evidence.length,walk(join(root,'public/brand')).length);
   for(const item of manifest.evidence){assert.equal(sha(item.asset),item.sha256,item.asset);assert.equal(sha(item.source),item.sha256,item.source);}
 });
-test('authored UI declares no fonts outside Source and Anton or remote font imports',()=>{
+test('authored UI avoids system font substitutions and remote font imports',()=>{
   for(const file of [...walk(join(root,'src')),...walk(join(root,'packages'))].filter(f=>/\.(css|tsx)$/.test(f))){
     const source=readFileSync(file,'utf8');
     const fonts=file.endsWith('.css')?source:[...source.matchAll(/fontFamily\s*[:=]\s*["']([^"']+)["']/g)].map(m=>m[1]).join('\n');

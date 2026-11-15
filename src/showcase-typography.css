@@ -1,0 +1,57 @@
+/* Original supplied FaZe display font. This sample supplies letters only;
+   toolkit Anton supplies numbers/punctuation, Source supplies reading text. */
+@font-face {
+  font-family: FaZeDisplay;
+  src: url('/brand/FaZed-Sans.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020, U+0041-005A, U+0061-007A;
+}
+
+.fortnite-showcase {
+  --font-display: FaZeDisplay, Anton;
+  font-family: Source;
+}
+
+/* Brand guidelines reserve the custom face for titles and short phrases. */
+.fortnite-showcase :is(
+  h1, h2, h3, h4,
+  .showcase-brand, .showcase-footer-brand,
+  .hillside-result, .showcase-score__total b,
+  .showcase-score__summary b, .progress-stats dd,
+  .community-table td:first-child
+) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: .015em;
+}
+
+.fortnite-showcase :is(
+  button, summary, label, th, dt, kbd,
+  .competition-nav a, .showcase-start, .showcase-steps > *,
+  .showcase-account-link, .auth-mode a, .auth-guest-link,
+  .showcase-eyebrow
+) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: .035em;
+}
+
+/* Keep editable text, long copy and small explanations readable and case-sensitive. */
+.fortnite-showcase :is(input, textarea, select, .progress-stats dd small, .showcase-footer-brand > span) {
+  font-family: Source;
+}
+
+.fortnite-showcase :is(h1, h2, h3, h4) {
+  overflow-wrap: anywhere;
+}
+
+/* The custom face is wider than Anton: preserve room for the header links. */
+.fortnite-showcase .showcase-brand {
+  font-size: clamp(23px, 2.35vw, 30px);
+}
+
+.fortnite-showcase .showcase-intro h1 {
+  font-size: clamp(40px, 6vw, 78px);
+}
