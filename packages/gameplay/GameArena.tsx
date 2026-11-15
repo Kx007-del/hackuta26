@@ -8,6 +8,8 @@ import './gameplay.css';
 import {evaluateShot,netSpinDegrees,targetForArena,JUMP_SPEED,GRAVITY} from './shotRules';
 
 type Props = {config:ChallengeConfig; onComplete:(r:AttemptResult)=>void; replay?:AttemptResult; onReplayEnd?:()=>void};
+// A replay plays for at least REPLAY_MIN_MS, then holds on the result for REPLAY_HOLD_MS before ending.
+const REPLAY_MIN_MS=1200, REPLAY_HOLD_MS=2500;
 type Hud = {air:boolean; spin:number; message:string; ready:boolean; finished:boolean;builds:number;edited:boolean;dashes:number;ads:boolean};
 
 export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
@@ -192,7 +194,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     let x=dashPeek?-4:0,y=1.7,z=dashPeek?-2.8:3,yaw=0,pitch=0,vy=0;
     let air=false,hasJumped=false,takeoffYaw=0,finished=false,ready=false;
     let builds=0,dashes=0,edited=false,ads=false,speed=0,dashLeft=0;
-    let dashCleared=false,rampTakeoff=false,firePending=false,assisted=false;
+    let dashCleared=false,rampTakeoff=false,firePending=false,assistLock=false,assisted=false;
     let started=performance.now(),last=started,lastRecord=0,lastHud=0,raf=0,disposed=false,replayEnded=false;
     let frames:ReplayFrame[]=[],shotTime=-1,replayShotShown=false;
     let shotEffectAt=-Infinity,impactEffectAt=-Infinity;
@@ -208,7 +210,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
       if(replay)return;
       x=dashPeek?-4:0;y=1.7;z=dashPeek?-2.8:3;vy=0;yaw=requiredSpinDegrees===180?Math.PI:0;pitch=0;
       air=false;hasJumped=false;takeoffYaw=yaw;finished=false;keys.clear();
-      builds=0;dashes=0;edited=false;ads=false;speed=0;dashLeft=0;dashCleared=false;rampTakeoff=false;firePending=false;assisted=false;
+      builds=0;dashes=0;edited=false;ads=false;speed=0;dashLeft=0;dashCleared=false;rampTakeoff=false;firePending=false;assistLock=false;assisted=false;
       started=performance.now();lastRecord=0;frames=[snapshot(0)];shotTime=-1;target.material=red;
       shotEffectAt=impactEffectAt=-Infinity;
       showBuild(0,false);message=objective;updateHud();
@@ -288,14 +290,19 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     }
     actions.current={enter,jump,fire,reset,build,edit,dash,aim,keyboard:()=>{if(!replay){start();updateHud();}},align:()=>{
       if(replay||finished||(roof&&requiredSpinDegrees>0))return; start();
-      const direction=targetPosition.clone().sub(new THREE.Vector3(x,y,z)).normalize();
-      yaw=Math.atan2(-direction.x,-direction.z);pitch=Math.asin(direction.y);assisted=true;message='Practice aim aligned. Complete the required movement and fire. Assisted shots are not ranked.';updateHud();
+      // Practice assist keeps tracking the target (e.g. through a jump) until the player aims manually or resets.
+      // The attempt stays marked assisted even after manual aim releases the lock, so it never ranks.
+      assistLock=true;assisted=true;alignToTarget();message='Practice aim aligned. Complete the required movement and fire. Assisted shots are not ranked.';updateHud();
     }};
+    function alignToTarget(){
+      const direction=targetPosition.clone().sub(new THREE.Vector3(x,y,z)).normalize();
+      yaw=Math.atan2(-direction.x,-direction.z);pitch=Math.asin(direction.y);
+    }
     function keydown(e:KeyboardEvent){if(replay)return;const active=document.activeElement;const locked=document.pointerLockElement===renderer.domElement;if(!locked&&active!==arena.current&&active!==renderer.domElement)return;if((e.target as HTMLElement)?.closest('input,textarea,select,button,a'))return;
       if(['Space','KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','KeyF','KeyR','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyB','KeyG','KeyX','KeyC'].includes(e.code))e.preventDefault();
       keys.add(e.code);if(e.repeat)return;if(e.code==='Space')jump();if(e.code==='KeyF')fire();if(e.code==='KeyR')reset();if(e.code==='KeyB')build();if(e.code==='KeyG')edit();if(e.code==='KeyX')dash();if(e.code==='KeyC')aim();}
     function keyup(e:KeyboardEvent){keys.delete(e.code);}
-    function mousemove(e:MouseEvent){if(replay||finished||document.pointerLockElement!==renderer.domElement)return;const sensitivity=ads ? .0012 : .0028;yaw-=e.movementX*sensitivity;pitch=THREE.MathUtils.clamp(pitch-e.movementY*sensitivity,-1.35,1.35);}
+    function mousemove(e:MouseEvent){if(replay||finished||document.pointerLockElement!==renderer.domElement)return;assistLock=false;const sensitivity=ads ? .0012 : .0028;yaw-=e.movementX*sensitivity;pitch=THREE.MathUtils.clamp(pitch-e.movementY*sensitivity,-1.35,1.35);}
     function click(){if(replay)return;if(document.pointerLockElement!==renderer.domElement){enter();return;}fire();}
     function blur(){keys.clear();}
     function resize(){const w=container!.clientWidth,h=container!.clientHeight;renderer.setSize(w,h);camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix();}
@@ -310,8 +317,10 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
           replayDashVelocity=f<1&&b.t>a.t?1000*(b.x-a.x)/(b.t-a.t):0;
         }
         if(!replayShotShown&&t>=replay.shotTimeMs){replayShotShown=true;shotEffectAt=now;if(replay.targetHit){target.material=blue;impactEffectAt=now;}message=replay.success?'SHOT LANDED.':'RUN IT BACK.';updateHud();}
-        if(!replayEnded&&t>Math.max(replay.durationMs,data[data.length-1]?.t??0)+1100){replayEnded=true;callbacks.current.onReplayEnd?.();}
+        // Hold on the result long enough to be seen, even for near-instant attempts.
+        if(!replayEnded&&t>Math.max(replay.durationMs,data[data.length-1]?.t??0,REPLAY_MIN_MS)+REPLAY_HOLD_MS){replayEnded=true;callbacks.current.onReplayEnd?.();}
       }else if(ready&&!finished){
+        if(['KeyQ','KeyE','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].some(k=>keys.has(k)))assistLock=false;
         if(keys.has('KeyQ')||keys.has('ArrowLeft'))yaw+=5.9*dt;
         if(keys.has('KeyE')||keys.has('ArrowRight'))yaw-=5.9*dt;
         if(keys.has('ArrowUp'))pitch=THREE.MathUtils.clamp(pitch+1.1*dt,-1.35,1.35);
@@ -350,6 +359,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
           }
         }else if(!onFloor||y-floor>.15){air=true;vy=0;}
         else y=floor;
+        if(assistLock)alignToTarget();
         if(y< -8||now-started>59000){reset();message='Fresh attempt. '+objective;}
         else if(firePending){firePending=false;finishShot(now);}
         else if(now-started-lastRecord>=33)record(now);
@@ -396,7 +406,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
       <div className="game-bottom"><p role="status">{hud.message}</p>{!replay&&<><div className="game-action-buttons">{!tactical&&<button disabled={hud.air||hud.finished} onClick={()=>actions.current?.jump()}>↑ JUMP <kbd>SPACE</kbd></button>}{buildyard&&<button disabled={!!hud.builds||hud.finished} onClick={()=>actions.current?.build()}>Build {wallEdit?'wall':'ramp'} <kbd>B</kbd></button>}
 {wallEdit&&<button disabled={!hud.builds||hud.edited||hud.finished} onClick={()=>actions.current?.edit()}>Edit wall <kbd>G</kbd></button>}
 {dashPeek&&<button disabled={!!hud.dashes||hud.finished} onClick={()=>actions.current?.dash()}>Dash <kbd>X</kbd></button>}
-<button aria-pressed={hud.ads} disabled={hud.finished} onClick={()=>actions.current?.aim()}>Aim down sights <kbd>C</kbd></button>
+<button aria-pressed={hud.ads} disabled={hud.finished} onClick={()=>actions.current?.aim()}>AIM DOWN SIGHTS <kbd>C</kbd></button>
 {(!roof||requiredSpinDegrees===0)&&<button disabled={hud.finished} onClick={()=>actions.current?.align()}>ALIGN AIM <kbd>PRACTICE ASSIST</kbd></button>}<button disabled={!hud.ready||hud.finished} onClick={()=>actions.current?.fire()}>⌖ FIRE <kbd>F</kbd></button><button onClick={()=>{actions.current?.reset();arena.current?.focus({preventScroll:true})}}>↻ RETRY <kbd>R</kbd></button></div><div className="game-controls"><span><kbd>WASD</kbd> move</span><span><kbd>Q / E</kbd> {tactical ? 'turn' : 'spin'}</span><span><kbd>↑ / ↓</kbd> aim</span><span>Click arena for mouse aim · Esc releases</span></div></>}</div>
     </>}
   </section>;

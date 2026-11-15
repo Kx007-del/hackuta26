@@ -7,6 +7,8 @@ export type ChallengeBuilderProps = {
   onChange: (config: ChallengeConfig) => void;
   proven: boolean;
   locked?: boolean;
+  /** Who is viewing a locked challenge; the host set the shot, the guest answers it. Defaults to guest wording. */
+  viewer?: 'host' | 'guest';
 };
 
 const ROOFTOP_PRESETS = [
@@ -15,7 +17,7 @@ const ROOFTOP_PRESETS = [
   { id: 'spin360', spin: 360, number: '03', label: 'FULL SEND', detail: 'One full rotation. One clean hit.', mark: '⟳' },
 ] as const;
 
-export default function ChallengeBuilder({ config, onChange, proven, locked = false }: ChallengeBuilderProps) {
+export default function ChallengeBuilder({ config, onChange, proven, locked = false, viewer = 'guest' }: ChallengeBuilderProps) {
   const PRESETS = config.arenaId === 'rooftop-v1' ? ROOFTOP_PRESETS : config.arenaId === 'buildyard-v1' ? [
     {id:'ramp-shot' as const,spin:0 as const,number:'01',label:'RAMP RUSH',detail:'Build a ramp. Jump from it. Land the shot.',mark:'↗'},
     {id:'wall-edit' as const,spin:0 as const,number:'02',label:'EDIT & ELEVATE',detail:'Build a wall. Edit. Shoot through the opening.',mark:'◇'},
@@ -40,7 +42,11 @@ export default function ChallengeBuilder({ config, onChange, proven, locked = fa
         <h2>{locked ? 'THE CHALLENGE' : 'MAKE YOUR MOVE'}</h2>
         <span className={`frb-challenge__difficulty frb-challenge__difficulty--${difficulty.toLowerCase()}`}>{difficulty}</span>
       </div>
-      <p className="frb-challenge__intro">{locked ? 'Your teammate set the shot. You write the next chapter.' : 'Pick your shot. Set the distance. Prove you can land it.'}</p>
+      <p className="frb-challenge__intro">{locked
+        ? viewer === 'host'
+          ? 'Your shot is locked in. Send the invite and see if your teammate can match it.'
+          : 'Your teammate set the shot. You write the next chapter.'
+        : 'Pick your shot. Set the distance. Prove you can land it.'}</p>
 
       <fieldset className="frb-challenge__fieldset" disabled={locked}>
         <legend><span>01</span> PICK YOUR STYLE {locked && <span className="frb-challenge__locked-label">LOCKED FOR THIS RELAY</span>}</legend>
