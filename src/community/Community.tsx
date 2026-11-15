@@ -60,7 +60,7 @@ function ProgressSummary({ profile }: { profile: Profile }) {
       </div>
     </div>
     <dl className="progress-stats">
-      <div><dt>Best score</dt><dd>{profile.bestScore ?? '—'}{profile.bestScore === null && <small>no ranked score yet</small>}</dd></div>
+      <div><dt>Best score</dt><dd>{profile.bestScore ?? '—'}{profile.bestScore === null && <small>no score yet</small>}</dd></div>
       <div><dt>Eligible attempts</dt><dd>{profile.attempts}</dd></div>
       <div><dt>Total XP</dt><dd>{profile.xp}</dd></div>
       <div><dt>Streak</dt><dd>{profile.currentStreak} <small>longest {profile.longestStreak}</small></dd></div>
@@ -110,7 +110,7 @@ export function CommunitySection({ progression }: { progression: Progression }) 
         <li><b>Eligible attempt:</b> one shot, at least 1.5 seconds after the attempt starts, after moving at least 3 m or turning at least 20°. Attempts less than 3 seconds apart don’t count.</li>
         <li><b>Days:</b> days run on UTC, using the server’s clock. A new day starts at 00:00 UTC ({nextUtcReset()} your time).</li>
         <li><b>Play Streak:</b> consecutive UTC days with at least one eligible attempt. More attempts on the same day don’t add to it. Missing a whole UTC day resets it; your longest streak is kept.</li>
-        <li><b>Highest Score:</b> your best score from attempts with a completed AI comparison. Game-data-only, declined or unavailable AI results earn XP but aren’t ranked. Scores are AI-estimated and this isn’t anti-cheat.</li>
+        <li><b>Highest Score:</b> your best score from any eligible attempt. A new best updates the leaderboard straight away. Scores are partly AI-estimated and this isn’t anti-cheat.</li>
         <li><b>Champion:</b> at 00:00 UTC each day, the server saves who was Highest Score #1 at that moment. Champion means #1 at one checkpoint; Reigning Champion means #1 at seven checkpoints in a row.{meta && ` Checkpoints started on ${formatDate(meta.trackingSince)} (UTC).`}</li>
         <li><b>Guest profile:</b> progress belongs to this browser through a private cookie. It isn’t an account: clearing cookies or switching device or browser starts a new guest. Names aren’t verified and one person can have several guests.</li>
       </ul>
@@ -166,7 +166,7 @@ function Leaderboards({ version, mode, profile, onShowcase }: { version: number;
 
 function BoardTable({ board, metric, onShowcase }: { board: Leaderboard; metric: string; onShowcase: () => void }) {
   const empty: Record<Board, string> = {
-    score: 'No ranked scores yet. Finish an attempt with AI scoring on to set the first one.',
+    score: 'No scores yet. Finish an eligible attempt to set the first one.',
     streak: 'No active streaks yet. Finish an eligible attempt today to start one.',
     xp: 'No XP earned yet. Finish an eligible attempt to earn 10 XP.',
   };

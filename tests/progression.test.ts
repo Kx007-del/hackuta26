@@ -75,11 +75,11 @@ test('rules: minimum valid attempt and display-name validation', () => {
 
 // ---------------- XP, caps and idempotency ----------------
 
-test('XP: 10 per eligible attempt including misses and unranked results; capped at 200 per UTC day', () => {
+test('XP: 10 per eligible attempt including misses and game-data-only results; capped at 200 per UTC day', () => {
   const c = clock(), store = freshStore(c), { player } = guest(store);
   const first = counted(playMany(store, c, player.id, 1, { hit: false, score: 12, aiStatus: 'declined' })[0]);
   assert.equal(first.xpAwarded, 10, 'a genuine miss still earns XP');
-  assert.equal(first.ranked, false);
+  assert.equal(first.ranked, true, 'game-data-only attempts count for Highest Score');
   const rest = playMany(store, c, player.id, 21).map(counted);
   assert.equal(rest[18].xpToday, 200, '20th attempt reaches the cap');
   assert.equal(rest[19].xpAwarded, 0, 'past the cap: still counted, no XP');
@@ -182,16 +182,16 @@ test('badges: attempt and streak badges unlock once, with dates; locked badges s
 
 // ---------------- rankings ----------------
 
-test('rankings: deterministic ties, unranked results excluded from Highest Score, your position beyond the top ten', () => {
+test('rankings: deterministic ties, every eligible best counts (with or without AI), your position beyond the top ten', () => {
   const c = clock(), store = freshStore(c);
   const a = guest(store).player, b = guest(store).player, d = guest(store).player;
   c.advance(4000); play(store, a.id, { score: 80 });
   c.advance(4000); play(store, b.id, { score: 80 });           // same score, later
-  c.advance(4000); play(store, d.id, { score: 99, aiStatus: 'unavailable' }); // not ranked
-  c.advance(4000); play(store, d.id, { score: 99, aiStatus: 'declined' });
+  c.advance(4000); play(store, d.id, { score: 70, aiStatus: 'unavailable' });
+  c.advance(4000); play(store, d.id, { score: 75, aiStatus: 'declined' }); // a new best without AI still ranks
   const score = store.leaderboard('score', b.id);
-  assert.deepEqual(score.entries.map(e => [e.rank, e.value, e.isYou]), [[1, 80, false], [2, 80, true]], 'earlier achiever wins the tie');
-  assert.equal(store.profile(d.id)!.bestScore, null);
+  assert.deepEqual(score.entries.map(e => [e.rank, e.value, e.isYou]), [[1, 80, false], [2, 80, true], [3, 75, false]], 'earlier achiever wins the tie');
+  assert.equal(store.profile(d.id)!.bestScore, 75);
   assert.match(score.tieRule, /first/);
   const xp = store.leaderboard('xp', d.id);
   assert.deepEqual(xp.entries.map(e => e.value), [20, 10, 10]);
@@ -202,8 +202,8 @@ test('rankings: deterministic ties, unranked results excluded from Highest Score
   const late = guest(store).player; c.advance(4000); play(store, late.id, { score: 5 });
   const board = store.leaderboard('score', late.id);
   assert.equal(board.entries.length, 10);
-  assert.deepEqual(board.you, { rank: 15, value: 5 });
-  assert.equal(board.total, 15);
+  assert.deepEqual(board.you, { rank: 16, value: 5 });
+  assert.equal(board.total, 16);
   store.close();
 });
 
@@ -413,8 +413,8 @@ test('http: the server judges eligibility and ranking; client-claimed XP, scores
     const forgedBody = await res.json() as ScoreResponse;
     const forgedProgress = counted(forgedBody.progress!);
     assert.equal(forgedProgress.xpAwarded, 10, 'XP comes from the server rule, not the client');
-    assert.equal(forgedProgress.ranked, false, 'game-data-only result is not ranked');
-    assert.deepEqual(forgedProgress.newBadges, ['first-run']);
+    assert.equal(forgedProgress.ranked, true, 'game-data-only result still counts for Highest Score');
+    assert.deepEqual(forgedProgress.newBadges, ['first-run', 'top-ten'], 'first score on an empty board enters the top ten');
     c.advance(5000);
     const noId = await (await api.score(telemetry(), undefined)).json() as ScoreResponse;
     assert.equal(noId.progress?.status, 'not-counted');
@@ -423,7 +423,7 @@ test('http: the server judges eligibility and ranking; client-claimed XP, scores
     const profile = (await api.me())!;
     assert.equal(profile.xp, 10);
     assert.equal(profile.badges.find(b => b.id === 'champion')!.earnedAt, null);
-    assert.equal(profile.bestScore, null, 'no ranked score yet');
+    assert.equal(profile.bestScore, forgedProgress.bestScore, 'best score comes from the server-computed score, not the forged one');
   });
 });
 
@@ -454,4 +454,17 @@ test('http: guest creation is rate-limited per client', async () => {
     const body = await (await new Api(api.base).score(telemetry(), randomUUID())).json() as ScoreResponse;
     assert.equal(body.progress?.status, 'not-counted', 'scoring still works without a profile');
   }, { guestsPerHour: 2 });
+});
+
+test('a new best score updates the leaderboard immediately; a lower score never replaces it', () => {
+  const c = clock(), store = freshStore(c), me = guest(store).player;
+  const best = () => store.leaderboard('score', me.id).you;
+  c.advance(4000); assert.equal(counted(play(store, me.id, { score: 40, aiStatus: 'declined' })).newBest, true);
+  assert.deepEqual(best(), { rank: 1, value: 40 });
+  c.advance(4000); assert.equal(counted(play(store, me.id, { score: 30 })).newBest, false);
+  assert.deepEqual(best(), { rank: 1, value: 40 }, 'lower score keeps the best');
+  c.advance(4000); assert.equal(counted(play(store, me.id, { score: 62, aiStatus: 'unavailable' })).newBest, true);
+  assert.deepEqual(best(), { rank: 1, value: 62 });
+  assert.equal(store.profile(me.id)!.bestScore, 62);
+  store.close();
 });

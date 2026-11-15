@@ -16,7 +16,7 @@
 | Idempotency | the browser sends a random `x-attempt-id` per attempt. The server claims it before scoring and records it once; a replay returns the stored result, and a duplicate still in flight gets 409 |
 | Storage bound | at most 100 attempt records per player per UTC day; more are scored but not stored |
 | Streak | consecutive UTC days with at least one eligible attempt. One advance per day; a whole missed UTC day resets it to 0; the longest streak is kept |
-| Highest Score | best score among **ranked** attempts only, meaning eligible attempts with a completed AI comparison (`ai.status = ok`). Declined, unavailable or game-data-only results earn XP but aren't ranked |
+| Highest Score | best score among all **eligible** attempts, with or without a completed AI comparison. A new best updates the board immediately |
 | Days | UTC, from the server's clock |
 
 ## Rankings and ties
