@@ -1,0 +1,8 @@
+{
+  "httpStatus": 200,
+  "body": {
+    "ok": true,
+    "service": "run-it-back",
+    "commit": "3222ef2c2dbb70b6b8f7a0306afd8b17db76c8c0"
+  }
+}
