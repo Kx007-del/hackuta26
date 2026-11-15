@@ -1,6 +1,10 @@
 {
   "role": "codex-3",
-  "lease": null,
-  "status": "not-connected",
+  "lease": {
+    "session": "5ff2c9a3-27bb-470c-b274-9409ba9be23b",
+    "at": "2026-11-15T00:12:11.860Z",
+    "machine": "HpPavilion"
+  },
+  "status": "waiting",
   "results": {}
 }
