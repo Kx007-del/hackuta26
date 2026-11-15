@@ -2,7 +2,7 @@
   "role": "codex-3",
   "lease": {
     "session": "a71833f5-20db-4630-bdae-7325b3b559bb",
-    "at": "2026-11-15T00:30:01.382Z",
+    "at": "2026-11-15T00:30:03.127Z",
     "machine": "HpPavilion"
   },
   "status": "working",
@@ -11,6 +11,11 @@
       "status": "failed",
       "finishedAt": "2026-11-15T00:12:37.400Z",
       "error": "Agent reported a blocker; inspect local reply/logs"
+    },
+    "082a7063-2329-4d38-8324-7abc800f4a26": {
+      "status": "running",
+      "startedAt": "2026-11-15T00:30:02.602Z",
+      "baseSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d"
     }
   }
 }
