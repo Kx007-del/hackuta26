@@ -11,9 +11,10 @@ One shot per attempt. Reset or R starts the next attempt. Final score 0–100:
 | AI comparison | 60 % | Gemini compares the attempt clip with `public/showcase/fortnite-reference.mp4`. It judges set-up, turn, aim hold, shot and timing, and is told to ignore graphics, HUD and stream overlays. |
 | Game data | 40 % | Deterministic checks, recomputed on the server: distance at the shot vs 61 m, a ~65° left turn, ~0.9 s aim hold, standing on the build, one hip-fire shot. |
 
-- A miss scores 25 at most.
+- A miss halves the final score (at most 50/100).
 - Without consent, a recording, a key or the model, the game-data score stands alone, and the panel says so.
 - Labelled "AI-estimated similarity to the reference — may be imperfect". No "verified" or anti-cheat claims.
+- Event attempts use deterministic game-data scoring only and do not award global XP.
 
 ## Privacy and safety
 

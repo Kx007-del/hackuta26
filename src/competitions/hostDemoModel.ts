@@ -1,5 +1,6 @@
 import type { CompetitionRules, CompetitionState } from '../../shared/competitions';
 import { parseRules } from '../../packages/competitions/rules';
+import { blendScore } from '../../packages/showcase-scoring/telemetry';
 
 /** Fictional, in-memory presentation data. No identity, cookies, persistence or network access. */
 export type DemoEvent = { id: string; rules: CompetitionRules; state: CompetitionState; participants: number; abandoned: number };
@@ -22,7 +23,7 @@ export function createHostDemo(): HostDemoState {
     { id: 'demo-draft', rules: { ...structuredClone(DEMO_RULES), title: 'Your Next Community Session' }, state: 'draft', participants: 0, abandoned: 0 },
   ], activeId: 'demo-showcase', sequence: 0, message: '', results: Array.from({ length: 39 }, (_, i) => ({
     id: `demo-result-${i}`, eventId: 'demo-showcase', playerId: `demo-player-${i % 24}`, name: names[i % 24] ?? `Player ${i % 24 + 1}`,
-    score: 96 - (i % 24) * 2 - (i >= 24 ? 5 : 0), hit: i % 3 !== 0, eligible: i !== 37 && i !== 38,
+    score: blendScore(96 - (i % 24) * 2 - (i >= 24 ? 5 : 0), null, i % 3 !== 0), hit: i % 3 !== 0, eligible: i !== 37 && i !== 38,
     review: i === 1 || i === 4 ? 'pending' : 'clear', flag: i === 1 ? 'Illustrative duplicate-telemetry flag.' : i === 4 ? 'Illustrative timing anomaly.' : '',
     at: new Date(BASE + (i + 1) * 60000).toISOString(),
   })), audit: [

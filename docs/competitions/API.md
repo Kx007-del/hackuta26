@@ -1,4 +1,6 @@
-# Hosted competitions — Phase 1 contract
+# Hosted competitions — historical Phase 1 contract
+
+This is the original implementation handoff, not the current release status. The public showcase now includes event screens, optional accounts and a separate public host simulation. See the root README and `docs/submission/READINESS.md` for the verified current build. Historical pending-deployment and no-account statements below describe that earlier phase.
 
 Backend candidate only. **Render update pending.** No frontend changes in this phase.
 Types: `shared/competitions.ts`; HTTP: `packages/competitions/server.ts`;

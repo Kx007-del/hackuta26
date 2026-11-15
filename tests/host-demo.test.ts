@@ -17,7 +17,17 @@ test('demo analytics derive from fictional results with clear completion denomin
   const board=demoStandings(state);
   assert.equal(board.length,24);assert.equal(new Set(board.map(r=>r.playerId)).size,24);
   assert.ok(board.every(r=>r.eligible&&r.review==='clear'));
-  assert.equal(board[0].score,96);
+  assert.equal(board[0].score,92);
+});
+
+test('fictional host results respect the advertised hit and miss score bounds', () => {
+  const results=createHostDemo().results;
+  assert.ok(results.some(r=>!r.hit));
+  assert.ok(results.some(r=>r.hit&&r.score>50));
+  for(const result of results){
+    assert.ok(Number.isInteger(result.score)&&result.score>=0&&result.score<=100);
+    if(!result.hit) assert.ok(result.score<=50,`${result.name}: missed shots cannot exceed 50/100`);
+  }
 });
 test('published demo rules are frozen while new drafts can be edited/published', () => {
   let state=createHostDemo();
