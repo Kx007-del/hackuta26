@@ -1,7 +1,11 @@
 {
   "role": "codex-3",
-  "lease": null,
-  "status": "offline",
+  "lease": {
+    "session": "a71833f5-20db-4630-bdae-7325b3b559bb",
+    "at": "2026-11-15T00:13:03.106Z",
+    "machine": "HpPavilion"
+  },
+  "status": "waiting",
   "results": {
     "f97732f3-fbed-4b8a-852f-1adc3cead87b": {
       "status": "failed",
