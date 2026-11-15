@@ -4,7 +4,7 @@ import { configForArena } from '../shared/contracts';
 export const SHOWCASE_CONFIG = configForArena('buildyard-v1');
 export const SHOWCASE_REFERENCE = {
   src: '/showcase/fortnite-reference.mp4',
-  title: 'Fortnite hillside shot',
+  title: 'FaZe Mews trickshot from 2019',
   durationSeconds: 3.104,
 } as const;
 
