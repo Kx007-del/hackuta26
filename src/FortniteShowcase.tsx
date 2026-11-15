@@ -7,6 +7,7 @@ import './fortnite-showcase.css';
 import { EventsBrowse, PublicEvent, HostHome, HostManager } from './competitions/Events';
 import { activeTab } from './competitions/api';
 import AccountPage, { AccountLink } from './auth/Account';
+import BadgeCollection, { CommunityNav } from './community/BadgeCollection';
 
 const HillsidePreview = lazy(() => import('../packages/gameplay/HillsidePreview'));
 const PRACTICE = '/practice';
@@ -34,12 +35,12 @@ export default function FortniteShowcase({
   const step = accountMode ? accountMode === 'signup' ? 'Create account' : accountMode === 'login' ? 'Sign in' : 'Account' : route === PRACTICE ? 'Practice' : route === RESULTS ? 'Results' : activeTab(route);
   const eventMatch = /^\/events\/([A-Za-z0-9-]+)$/.exec(route);
   const hostMatch = /^\/host\/events\/([A-Za-z0-9-]+)$/.exec(route);
-  const known = !!accountMode || ['/', '/play', PRACTICE, RESULTS, '/leaderboards', '/events', '/host'].includes(route) || eventMatch || hostMatch;
+  const known = !!accountMode || ['/', '/play', PRACTICE, RESULTS, '/leaderboards', '/leaderboards/badges', '/events', '/host'].includes(route) || eventMatch || hostMatch;
   function navigate(event: React.MouseEvent) {
     const anchor = (event.target as HTMLElement).closest('a');
     if (!anchor || anchor.target || anchor.hasAttribute('download') || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const target = new URL(anchor.href, window.location.href);
-    if (target.origin !== location.origin || target.hash || !/^\/(?:$|play$|practice$|results$|login$|signup$|account$|leaderboards$|events(?:\/|$)|host(?:\/|$))/.test(target.pathname)) return;
+    if (target.origin !== location.origin || target.hash || !/^\/(?:$|play$|practice$|results$|login$|signup$|account$|leaderboards(?:\/badges)?$|events(?:\/|$)|host(?:\/|$))/.test(target.pathname)) return;
     event.preventDefault(); window.history.pushState(null, '', target.pathname + target.search); setCurrentPath(target.pathname); setFallback(null); window.scrollTo(0, 0);
   }
 
@@ -71,7 +72,7 @@ export default function FortniteShowcase({
         <a href={PRACTICE}>02 Practice</a>
         <span aria-current="page">03 Results</span>
       </nav>}
-      {!known ? <section className="showcase-route"><h1>Page not found</h1><a href="/">Back to Play</a></section> : accountMode ? <AccountPage key={accountMode} mode={accountMode} /> : route === '/events' ? <EventsBrowse /> : eventMatch ? <PublicEvent key={eventMatch[1]} code={eventMatch[1]} /> : route === '/host' ? <HostHome /> : hostMatch ? <HostManager key={hostMatch[1]} id={hostMatch[1]} /> : route === '/leaderboards' ? <GlobalStandings /> : step === 'Practice' ? <section className="showcase-route" aria-labelledby="practice-heading">
+      {!known ? <section className="showcase-route"><h1>Page not found</h1><a href="/">Back to Play</a></section> : accountMode ? <AccountPage key={accountMode} mode={accountMode} /> : route === '/events' ? <EventsBrowse /> : eventMatch ? <PublicEvent key={eventMatch[1]} code={eventMatch[1]} /> : route === '/host' ? <HostHome /> : hostMatch ? <HostManager key={hostMatch[1]} id={hostMatch[1]} /> : route === '/leaderboards/badges' ? <BadgeCollectionPage /> : route === '/leaderboards' ? <GlobalStandings /> : step === 'Practice' ? <section className="showcase-route" aria-labelledby="practice-heading">
         <h1 id="practice-heading">Take the trick shot</h1>
         <p className="showcase-muted">Run up the ramp, jump off the landing and turn toward the target. Take one shot, then exit to view your report.</p>
         {typeof window !== 'undefined' && <Suspense fallback={<p role="status">Loading the practice arena…</p>}>
@@ -130,5 +131,13 @@ function HomePage({ search }: { search: string }) {
 
 function GlobalStandings() {
   const progression = useProgression();
-  return <section className="showcase-route"><h1>Leaderboards</h1><p>Global player rankings, XP, streaks and badge collection. Competition standings live on each event page.</p><ProgressPanel progression={progression} /><CommunitySection progression={progression} /></section>;
+  return <section className="showcase-route"><h1>Leaderboards</h1><CommunityNav /><p>Global player rankings, XP, streaks and badge collection. Competition standings live on each event page.</p><ProgressPanel progression={progression} /><CommunitySection progression={progression} /></section>;
+}
+
+function BadgeCollectionPage() {
+  const progression = useProgression();
+  return <section className="showcase-route badge-collection-page"><h1>Your trophies.<br /><em>Your story.</em></h1><CommunityNav badges />
+    {progression.me.state === 'loading' ? <p role="status">Loading your badge collection…</p> : progression.me.state === 'error' ? <p role="alert">{progression.me.message} <button type="button" onClick={progression.refresh}>Try again</button></p>
+      : <><BadgeCollection profile={progression.me.data.profile} />{!progression.me.data.storageDurable && <p className="community-note">This demo uses temporary storage. Saved awards may reset after a server restart or redeployment.</p>}</>}
+  </section>;
 }
