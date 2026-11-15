@@ -6,15 +6,5 @@
     "machine": "OmniBook"
   },
   "status": "archiving",
-  "results": {
-    "a70992b1-baa4-48c8-a137-7423af12e240": {
-      "status": "done",
-      "finishedAt": "2026-11-15T00:30:11.878Z",
-      "baseSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
-      "headSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
-      "branch": null,
-      "model": "claude-opus-5-5",
-      "text": "TEAMRELAY-H26 | claude-2 | transport reply received | waiting for human resume. Role: Claude 2 (tests/, *.test.ts), model claude-opus-5-5. No tools were used and no files were read, as instructed. I haven't checked the repository and I'm claiming no tests or coding readiness. Feature work is still paused."
-    }
-  }
+  "results": {}
 }
