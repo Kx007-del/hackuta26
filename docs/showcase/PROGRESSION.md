@@ -6,7 +6,7 @@
 - On a player's first scored attempt (or first name save), the server creates a guest and sets the `rib_guest` cookie: a random 32-byte token, HttpOnly, SameSite=Lax, and Secure on HTTPS, valid for one year. Only a SHA-256 hash of the token is stored.
 - Opening the page creates nothing. An unknown cookie belongs to no one.
 - Display names are 1–24 letters, numbers, spaces or `. _ - '`. They are not unique, not verified, and never used as identity.
-- Guest progress belongs to that browser. There are no accounts and no cross-device sync.
+- Guest progress belongs to that browser. Optional username/password accounts can preserve the same server identity across browsers/devices while the database exists; see [accounts](AUTHENTICATION.md). Login does not make the current Render filesystem durable.
 
 ## Rules (server-enforced; `packages/progression/rules.ts`)
 | Rule | Value |
