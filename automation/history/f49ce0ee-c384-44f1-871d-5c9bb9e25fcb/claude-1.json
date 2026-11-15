@@ -1,0 +1,14 @@
+{
+  "role": "claude-1",
+  "results": {
+    "115795ac-1301-49b3-82ba-e36a4ad6d88d": {
+      "status": "done",
+      "finishedAt": "2026-11-15T00:02:01.491Z",
+      "baseSha": "c14417a3409d58783342af07bbec709148c08ee5",
+      "headSha": "c14417a3409d58783342af07bbec709148c08ee5",
+      "branch": null,
+      "model": "claude-opus-5-5",
+      "text": "TEAMRELAY-H26. Handoff for Codex 1:\n\n- **Role:** claude-1. My files are `team/roles/claude-1/`, I work in `agent-worktrees/claude-1/`, I'm on branch `agents/claude-1`, and this is the Windows 1 computer.\n- **Checkout:** I can read the repo. HEAD is `c14417a3409d58783342af07bbec709148c08ee5`, which matches baseSha. `AGENTS.md` and `team/roles/README.md` are both there.\n- **Model:** claude-opus-5-5. No model fallback and no account switching.\n- **Status:** Ready, waiting for human resume. The run is paused and humanResume is null. I made no edits and changed nothing. My only checks were read-only: the current SHA and branch, that the two files exist, and a search of the roles file. No tests or browser checks were run."
+    }
+  }
+}
