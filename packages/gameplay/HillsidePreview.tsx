@@ -114,9 +114,7 @@ export default function HillsidePreview({ onScored }: { onScored?: (result: Scor
       world.mannequin.rotation.y = -heading;
       world.playerShadow.position.set(x, y + .024, z);
       world.playerShadow.visible = player.grounded;
-      world.legPivots.forEach((leg, i) => {
-        leg.rotation.x = player.grounded ? Math.sin(gait + i * Math.PI) * .42 * walkWeight : (i ? -.35 : .25);
-      });
+      world.character.pose({ grounded: player.grounded, gait, walkWeight, vy: player.vy, pitch, time: performance.now() / 1000 });
       world.target.rotation.x = -fall * Math.PI / 2;
 
       const sin = Math.sin(heading), cos = Math.cos(heading);
@@ -162,6 +160,7 @@ export default function HillsidePreview({ onScored }: { onScored?: (result: Scor
       heading = RAMP_HEADING;
       pitch = -.10;
       gait = walkWeight = cooldown = fall = dip = 0;
+      world.character.reset();
       fov = CAMERA_FOV;
       jumpQueued = targetDown = false;
       setShot(undefined);
@@ -187,6 +186,7 @@ export default function HillsidePreview({ onScored }: { onScored?: (result: Scor
       const distance = Math.hypot(world.target.position.x - player.x, world.target.position.z - player.z);
       if (hit) targetDown = true;
       setShot({ hit, distance, airborne: !player.grounded, id: ++shotId });
+      world.character.fire();
       const shotAt = performance.now();
       const telemetry: AttemptTelemetry = {
         version: 1, shots: 1, ads: false, hit,
@@ -290,6 +290,7 @@ export default function HillsidePreview({ onScored }: { onScored?: (result: Scor
       const right = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
       player = stepPlayer(player, { forward, right, heading, jump: jumpQueued }, dt);
       jumpQueued = false;
+      world.character.tick(dt);
       const speed = Math.hypot(player.vx, player.vz);
       const moving = player.grounded && speed > .3;
       if (moving) gait += dt * speed * 1.7;
