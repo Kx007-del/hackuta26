@@ -4,6 +4,8 @@ Three original, game-inspired browser environments with reference clip uploads, 
 
 **Feature development is paused.** For the three-Windows/one-Mac, five-agent setup, start with [Multi-computer instructions](docs/MULTI-COMPUTER.md). The shared state is [team/state.json](team/state.json).
 
+For automatic task dispatch under Codex 1, use the [distributed team relay](docs/AUTOMATION.md). Each computer needs its assigned signed-in worker running; setup does not resume feature development.
+
 | Game inspiration | Environment | Playable mechanics |
 | --- | --- | --- |
 | Call of Duty | Military rooftop | Sniper silhouette, aim down sights, jump, 180/360 spin shots |

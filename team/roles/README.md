@@ -21,6 +21,6 @@ Ownership:
 
 Before editing, claim a bounded GitHub task with base SHA and owned paths. Start a work/ROLE/TASK branch in your own worktree. Never switch branches or run edits in another role's folder. Never reset, clean, force-push, stash or overwrite another role's work. If an owned-path change needs another owner, ask Codex 1 to record a temporary assignment first. Full worktree visibility is needed for reading and testing; these are coordination rules, not filesystem permission boundaries.
 
-Record every handoff with task, role, base/head SHA, files, checks actually run, findings and next owner. Claude 2 tests the actual implementation commit; Claude 1 reviews the actual final diff. Codex 1 integrates after review/checks and required human approval. Git does not automatically merge role branches or wake agents.
+Record every handoff with task, role, base/head SHA, files, checks actually run, findings and next owner. Claude 2 tests the actual implementation commit; Claude 1 reviews the actual final diff. Codex 1 integrates after review/checks and required human approval. Git does not automatically merge role branches or wake agents; the optional running relay in docs/AUTOMATION.md dispatches tasks through GitHub under Codex 1's control.
 
 Feature development remains paused. Only setup and connection checks may run until the human resumes. Follow team/state.json and docs/MULTI-COMPUTER.md. Keep credentials, local databases, uploads, dependencies and generated build output out of Git; package-lock.json and build commands reproduce the build.

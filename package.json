@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/index.ts --production",
     "test": "tsx --test packages/social/*.test.ts packages/gameplay/*.test.ts tests/*.test.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "team:test": "node --test scripts/relay.test.mjs",
+    "team:status": "node scripts/relay.mjs status"
   },
   "dependencies": {
     "express": "^5.1.0",

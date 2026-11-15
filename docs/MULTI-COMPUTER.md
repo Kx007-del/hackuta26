@@ -18,7 +18,7 @@ The human outranks every agent. Codex 1 has final say among agents. Balance mean
 
 Originally, all five accounts were on this Windows computer, behind a localhost message service. That service routed read-only proposals; desktop applied changes and ran checks. It was limited to two simultaneous provider turns. All five had fresh successful responses in the last completed cycle; see H26-2 account-health records. Enabled configuration alone never proved connectivity. The service's proposal transport and coordinator-mediated edits were a bottleneck for truly distributed coding.
 
-The new workflow shares committed source, task packets, reviews and evidence through this private GitHub repository. Each computer runs its own agent session. GitHub does not automatically wake those sessions or synchronize their private chat histories. We are not installing an always-on cross-machine dispatcher in this setup.
+The workflow shares committed source, task packets, reviews and evidence through this private GitHub repository. Each computer runs its own agent session. The subsequently requested [distributed relay](AUTOMATION.md) can automatically dispatch tasks while its coordinator/worker processes are running. GitHub alone does not wake sessions or synchronize private chat histories.
 
 ## Install and sign in on each computer
 
@@ -164,7 +164,7 @@ Codex 1 checks the five reports, asks one narrow backend/frontend interface ques
 
 Before starting, each agent fetches the integration branch and reads current pause state and issue comments. Each handoff includes role, issue, exact SHA, owned files, checks actually run, blockers and next owner. Each milestone must have all five substantive deliverables; avoid repeated coordinator acknowledgement turns. Keep provider usage within each account's limits; do not move work between identities to bypass a quota.
 
-The old loopback bus remains local and paused. Do not expose port 17861 to the network or copy its credentials to other computers. If automatic cross-machine wakeups are wanted later, build that as a separate reviewed coordinator/worker change after all five check-ins. Until then each agent session must be started locally and told which GitHub issue to follow.
+The old loopback bus remains local and paused. Do not expose port 17861 to the network or copy its credentials to other computers. For automatic dispatch, follow [AUTOMATION.md](AUTOMATION.md); each machine must start its assigned local worker once. Those listeners then receive subsequent bounded tasks without manual prompt copying. Feature work remains paused until explicit human resume.
 
 ## Initial verification and limits
 
