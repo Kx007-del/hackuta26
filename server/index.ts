@@ -6,6 +6,7 @@ import { registerClipApi } from "../packages/social/clips";
 import { registerLeaderboardApi } from "../packages/leaderboard/server";
 import { registerShowcaseScoring } from "../packages/showcase-scoring/server";
 import { registerProgression } from "../packages/progression/server";
+import { registerCompetitions } from "../packages/competitions/server";
 import { resolveRuntimeConfig } from "./runtime-config";
 const { host, port, commit } = resolveRuntimeConfig(process.env);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -21,7 +22,8 @@ app.get("/api/health", (_req, res) =>
 const cleanup = registerApi(app, { clipLookup: clips.get });
 const closeLeaderboard = registerLeaderboardApi(app);
 const progression = registerProgression(app);
-registerShowcaseScoring(app, { progress: progression.scoring });
+const competitions = registerCompetitions(app, { identity: progression.identity, revision: commit });
+registerShowcaseScoring(app, { progress: progression.scoring, competitions: competitions.scoring });
 app.use("/api", (_req, res) =>
   res.status(404).json({ error: "Unknown API route" }),
 );
@@ -49,6 +51,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
       cleanup();
       closeLeaderboard();
       progression.close();
+      competitions.close();
       clips.close();
       process.exit(0);
     }),

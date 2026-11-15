@@ -100,5 +100,8 @@ export function registerProgression(app: Express, options: Options = {}) {
       };
     },
   };
-  return { store, scoring, close: () => store.close() };
+  return { store, scoring, identity(req: Request) {
+    const player = viewer(req);
+    return player ? { id: player.id, name: player.name } : undefined;
+  }, close: () => store.close() };
 }
