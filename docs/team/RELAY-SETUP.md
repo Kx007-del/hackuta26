@@ -1,0 +1,13 @@
+# Distributed relay setup verification
+
+Feature development remains paused. This report concerns coordination setup only.
+
+- Published scripts/relay.mjs, relay-runtime.mjs and relay-core.mjs implement a private GitHub-backed queue on automation/queue, with a Codex 1 planning listener and separate provider workers.
+- Seven local relay tests pass. They cover pause/resume eligibility, failed dependencies/no replay, role/base constraints, rename/source/test ownership, completion constraints, common-token redaction and actual local subprocess cancellation/timeout/model mismatch using a mock provider. No subscription usage occurs in those tests.
+- The real GitHub queue was initialized paused. Five setup-only onboarding tasks were created. Repeating initialization preserved existing control/results. A real stale-SHA update to a dedicated healthcheck file was rejected, validating optimistic-write conflict handling.
+- The real Codex 1 and Claude 1 assigned profiles each returned a setup reply through the GitHub queue. Both made no feature edits. The worker recorded actual checkout c14417a3409d58783342af07bbec709148c08ee5. Claude's provider modelUsage was exactly claude-opus-5-5.
+- The Codex 1 coordinator and Claude 1 worker listeners run on Windows 1 in hidden Node processes with local logs/PIDs under ignored .team-local/. Their remote heartbeats were live while the queue stayed paused. They must remain running to process later assignments. They are not boot-time services.
+- Codex 2 on the Mac, Codex 3 on Windows 3, and Claude 2 on Windows 2 are not connected yet. Each has a pending setup-only task; use docs/DEVICE-PROMPTS.md to connect them. Do not mark these accounts/devices verified until each worker answers.
+- An independent temporary review helper inspected the relay without using subscription accounts. Findings led to explicit resume and archive recovery, prelaunch/prepublication state checks, macOS process-group cancellation, reviewer access to actual Git diffs, attributed dependency handoffs, nonempty output validation, and coordinator turn/lease checks. This helper is not counted as one of the five signed-in roles.
+
+Verification limits: macOS/provider execution on the remote devices, full five-account parallel operation, a complete autonomous feature cycle, and production task-branch publication are not yet demonstrated. GitHub state checks are coordination safeguards; they cannot atomically cancel an in-flight push or guarantee termination on a disconnected computer. No main merge, deployment, copied login credentials or public network service was performed. The original localhost bus remains paused.

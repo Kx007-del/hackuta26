@@ -6,6 +6,8 @@ This desktop chat can inspect and control the queue. A separate signed-in Codex 
 
 The human's earlier feature pause remains in force. Installing or starting listeners does not resume feature development. The old localhost dispatcher stays paused; do not run both dispatchers for the same roles.
 
+Copy-paste onboarding prompts for the other computers are in [DEVICE-PROMPTS.md](DEVICE-PROMPTS.md). Current-machine verification is recorded in [RELAY-SETUP.md](team/RELAY-SETUP.md).
+
 ## Machines and startup
 
 | Computer | Process | Account |
@@ -127,6 +129,6 @@ For an interrupted process, first stop it locally and inspect the role's worktre
 node scripts/relay.mjs recover ROLE --approval "Human instruction authorizing recovery after inspection"
 ```
 
-Recovery preserves failed history and never replays the task. After inspection and explicit human authorization, the desktop coordinator may archive the previous control/results and prepare a new paused cycle with node scripts/relay.mjs new-cycle --approval "Human authorization for a new reviewed cycle". Running/interrupted tasks must be resolved first. The archive stays on the private queue branch. Start still requires explicit human resume for the new goal. Do not erase queue files to bypass a limit. Starting/stopping listeners can be done independently of authorizing a new project cycle.
+Recovery preserves failed history and never replays the task. After inspection and explicit human authorization, the desktop coordinator may archive the previous control/results and prepare a new paused cycle with node scripts/relay.mjs new-cycle --approval "Human authorization for a new reviewed cycle". Running/interrupted tasks must be resolved first. The archive stays on the private queue branch. Interrupted initialization can be rerun without resetting existing control/results. An interrupted archive stays in archiving (no tasks run); rerun the explicitly authorized new-cycle command to continue preserving the existing history files. Start still requires explicit human resume for the new goal. Do not erase queue files to bypass a limit. Starting/stopping listeners can be done independently of authorizing a new project cycle.
 
 Run verification with npm run team:test. It exercises pause/dependency/role/ownership/completion guards and real local child-process cancellation/model mismatch using a mock provider (no subscriptions used by those tests). Real GitHub transport and each real account response are separate checks recorded in the setup report. Windows 2, Windows 3 and the Mac remain unverified until their workers actually connect and answer a setup-only task. This computer cannot install or start their processes remotely without access to those devices.

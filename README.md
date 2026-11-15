@@ -6,6 +6,8 @@ Three original, game-inspired browser environments with reference clip uploads, 
 
 For automatic task dispatch under Codex 1, use the [distributed team relay](docs/AUTOMATION.md). Each computer needs its assigned signed-in worker running; setup does not resume feature development.
 
+Use the [device-specific copy-paste prompts](docs/DEVICE-PROMPTS.md) to connect the Mac, Windows 2 and Windows 3.
+
 | Game inspiration | Environment | Playable mechanics |
 | --- | --- | --- |
 | Call of Duty | Military rooftop | Sniper silhouette, aim down sights, jump, 180/360 spin shots |
