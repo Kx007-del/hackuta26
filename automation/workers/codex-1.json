@@ -2,15 +2,19 @@
   "role": "codex-1",
   "lease": {
     "session": "f9493166-f6a9-44ea-93a5-88a8cbc82cbd",
-    "at": "2026-11-15T00:01:45.134Z",
+    "at": "2026-11-15T00:01:57.244Z",
     "machine": "KrunalMadhani"
   },
   "status": "paused",
   "results": {
     "843868ec-f598-4d99-9f25-fdae003467ec": {
-      "status": "running",
-      "startedAt": "2026-11-15T00:01:44.792Z",
-      "baseSha": "c14417a3409d58783342af07bbec709148c08ee5"
+      "status": "done",
+      "finishedAt": "2026-11-15T00:01:56.878Z",
+      "baseSha": "c14417a3409d58783342af07bbec709148c08ee5",
+      "headSha": "c14417a3409d58783342af07bbec709148c08ee5",
+      "branch": null,
+      "model": "assigned Codex profile",
+      "text": "TEAMRELAY-H26 — Codex 1, coordinator.\nStatus: waiting-for-human-resume; remote run paused, humanResume null.\nCheckout: supplied codex-1 worktree; repository access unverified (no tools run).\nAssigned model: exact model identifier unavailable.\nReady for setup coordination. No edits, commands, tests or browser checks performed."
     }
   }
 }
