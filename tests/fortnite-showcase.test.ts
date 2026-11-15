@@ -23,7 +23,7 @@ test('public entry uses the fixed Fortnite showcase rather than the legacy app',
   const html = renderToStaticMarkup(createElement(FortniteShowcase, { search: '' }));
   assert.match(html, /FORTNITE SHOWCASE/);
   assert.match(html, /03 \/ COMMUNITY/);
-  assert.match(html, /role="tablist" aria-label="Leaderboards"/);
+  assert.match(html, /role="tablist" aria-label="Leaderboard"/);
   assert.match(html, /START PRACTICE/);
   assert.match(html, /<video[^>]*controls/);
   assert.match(html, /src="\/showcase\/fortnite-reference.mp4"/);
