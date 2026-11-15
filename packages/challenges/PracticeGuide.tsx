@@ -21,7 +21,7 @@ export default function PracticeGuide({ config, isReplay }: Props) {
       </ol>
       <details>
         <summary>Practice controls</summary>
-        <ul>
+        <ul aria-label="Practice controls">
           {controls.map(control => <li key={control}>{control}</li>)}
         </ul>
       </details>
