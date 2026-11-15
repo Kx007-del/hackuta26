@@ -1,0 +1,10 @@
+{
+  "role": "claude-2",
+  "results": {
+    "391e1041-7a7e-42ff-a7f0-dc845cbd5cb0": {
+      "status": "failed",
+      "finishedAt": "2026-11-15T00:45:49.030Z",
+      "error": "Paused/stopped remotely or worker lease lost"
+    }
+  }
+}
