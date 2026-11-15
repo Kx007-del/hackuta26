@@ -2,9 +2,9 @@
   "role": "codex-3",
   "lease": {
     "session": "5ff2c9a3-27bb-470c-b274-9409ba9be23b",
-    "at": "2026-11-15T00:12:14.108Z",
+    "at": "2026-11-15T00:12:18.912Z",
     "machine": "HpPavilion"
   },
-  "status": "paused",
+  "status": "working",
   "results": {}
 }
