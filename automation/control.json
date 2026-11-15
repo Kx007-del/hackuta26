@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "runId": "f49ce0ee-c384-44f1-871d-5c9bb9e25fcb",
+  "status": "paused",
+  "goal": "",
+  "baseSha": "c14417a3409d58783342af07bbec709148c08ee5",
+  "maxTurns": 30,
+  "turns": 0,
+  "tasks": [],
+  "humanResume": null,
+  "summary": "Setup only; feature work paused."
+}
