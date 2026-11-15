@@ -2,7 +2,9 @@ import express, { type Express, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, readdirSync, statSync, openSync, closeSync, fsyncSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
-import { ARENAS, type ArenaId, type ClipReference } from '../../shared/contracts';
+import { ARENAS, type ArenaId, type ClipReference, type LinkedClipReference } from '../../shared/contracts';
+import { parseVideoLink } from '../../shared/video-links';
+import { resolveVideoLink } from './video-links';
 
 export const MAX_CLIP_BYTES = 50 * 1024 * 1024;
 const MAX_STORED_BYTES = 512 * 1024 * 1024;
@@ -41,7 +43,13 @@ export function registerClipApi(app: Express, options: { directory?: string } = 
     if (!existsSync(file)) return undefined;
     try {
       const clip = JSON.parse(readFileSync(file, 'utf8')) as ClipReference;
-      if (!clip || typeof clip !== 'object' || clip.id !== id || !supportedType(clip.contentType) || !ARENAS.some(a => a.id === clip.arenaId) || typeof clip.name !== 'string' || !clip.name.trim() || clip.name.length > 160 || /[\u0000-\u001f\u007f]/.test(clip.name) || !Number.isSafeInteger(clip.size) || clip.size < 24 || clip.size > MAX_CLIP_BYTES || ![clip.duration,clip.start,clip.end].every(v => typeof v === 'number' && Number.isFinite(v)) || clip.duration <= 0 || clip.duration > 90 || clip.start < 0 || clip.end <= clip.start || clip.end > clip.duration || typeof clip.createdAt !== 'string' || !Number.isFinite(Date.parse(clip.createdAt))) return undefined;
+      if (!clip || typeof clip !== 'object' || clip.id !== id || !ARENAS.some(a => a.id === clip.arenaId) || typeof clip.name !== 'string' || !clip.name.trim() || clip.name.length > 160 || /[\u0000-\u001f\u007f]/.test(clip.name) || ![clip.start,clip.end].every(v => typeof v === 'number' && Number.isFinite(v)) || clip.start < 0 || clip.end <= clip.start || typeof clip.createdAt !== 'string' || !Number.isFinite(Date.parse(clip.createdAt))) return undefined;
+      if (clip.source === 'link') {
+        if (typeof clip.url !== 'string' || clip.end > 86400 || clip.end - clip.start < 0.25 || clip.end - clip.start > 90) return undefined;
+        const parsed = parseVideoLink(clip.url);
+        return parsed && parsed.provider === clip.provider && parsed.videoId === clip.videoId && parsed.url === clip.url ? clip : undefined;
+      }
+      if (!supportedType(clip.contentType) || !Number.isSafeInteger(clip.size) || clip.size < 24 || clip.size > MAX_CLIP_BYTES || !Number.isFinite(clip.duration) || clip.duration <= 0 || clip.duration > 90 || clip.end > clip.duration) return undefined;
       const media = statSync(join(directory, id + extensions[clip.contentType]));
       return media.isFile() && media.size === clip.size ? clip : undefined;
     } catch { return undefined; }
@@ -51,6 +59,33 @@ export function registerClipApi(app: Express, options: { directory?: string } = 
   let uploads = 0;
   let closing = false;
   const pending = new Set<() => void>();
+  app.post('/api/clips/link', express.json({ limit: '8kb' }), async (req, res) => {
+    if (closing || uploads >= 2) { fail(res, 'Two references are already being saved. Try again shortly.', 503); return; }
+    const { url, arenaId, start, end } = req.body ?? {};
+    if (typeof url !== 'string' || !ARENAS.some(a => a.id === arenaId)) { fail(res, 'Choose a game and paste a video link.'); return; }
+    if (![start, end].every(v => typeof v === 'number' && Number.isFinite(v)) || start < 0 || end > 86400 || end - start < 0.25 || end - start > 90) {
+      fail(res, 'Choose a moment from 0.25 to 90 seconds long, within the first 24 hours of the video.'); return;
+    }
+    uploads += 1;
+    let link;
+    try { link = await resolveVideoLink(url); }
+    catch (error) {
+      fail(res, error instanceof Error && /^(Use |Paste |This TikTok|Use a video)/.test(error.message) ? error.message : 'Could not open this link. Try the full public video URL.');
+      return;
+    } finally { uploads -= 1; }
+    if (closing || req.aborted || res.destroyed) return;
+    const id = randomUUID();
+    const clip: LinkedClipReference = { id, arenaId, name: `${link.provider === 'youtube' ? 'YouTube' : 'TikTok'} / ${link.videoId}`, source: 'link', ...link, start, end, createdAt: new Date().toISOString() };
+    const temporary = join(directory, id + '.json.tmp');
+    try {
+      writeSynced(temporary, JSON.stringify(clip));
+      renameSync(temporary, join(directory, id + '.json'));
+      res.status(201).json(clip);
+    } catch {
+      try { unlinkSync(temporary); } catch {}
+      fail(res, 'Unable to save this reference. Please try again.', 500);
+    }
+  });
   app.post('/api/clips', (req, res, next) => {
     const type = req.headers['content-type']?.split(';')[0].trim().toLowerCase() ?? '';
     if (!supportedType(type)) { fail(res, 'Choose an MP4, WebM, or MOV video.', 415); return; }
@@ -112,6 +147,7 @@ export function registerClipApi(app: Express, options: { directory?: string } = 
   app.get('/api/clips/:id/media', (req, res, next) => {
     const clip = get(String(req.params.id));
     if (!clip) { fail(res, 'Reference clip not found.', 404); return; }
+    if (clip.source === 'link') { fail(res, 'This reference plays in its original provider player.', 409); return; }
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'private, max-age=3600');
     const range = req.headers.range;

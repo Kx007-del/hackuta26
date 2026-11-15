@@ -1,12 +1,13 @@
-# Clip interface implementation helper
+# Link reference workbench handoff
 
-Implemented `EnvironmentPicker` and `ClipWorkbench` with local scoped styling. This is an implementation helper's work, not a subscription-profile execution claim.
+The human authorized Codex 2 to implement the link flow end to end on a separate branch while Codex 1 remains paused. This includes the temporary frontend and shared-type scope for this feature only. The shared relay remains stopped.
 
-- Picker displays three game names as text (no game logos), distinct CSS scene motifs and ARENAS metadata. Selection resets through configForArena and drops any prior reference. Locked relays cannot switch game.
-- Workbench supports file/drop selection, MP4/WebM/MOV validation, 50 MB and decoded 0.25–90 second limits, inline video, selected start/end, selected-moment playback and raw upload to the agreed native endpoint.
-- New upload saves referenceClipId through onChange, so the integration's existing proof invalidation applies. Locked mode fetches saved metadata/media for guests and persisted relay reopening.
-- Fetches cancel/ignore stale work. Browser object URLs are revoked, duplicate uploads locked, aborted requests don't write late UI. Clip selection cancellation preserves the existing saved reference.
-- Only Anton/Source font families and `/brand/logo.png` are used by these components. CSS scene motifs contain no third-party marks.
-- Integration: render both components above the live arena. Props are `{config,onChange,locked?}`. Workbench also works in a read-only premiere/reference panel if desired.
+- The reference entry form accepts YouTube watch/youtu.be/Shorts/live links and TikTok full video/share links. Local file selection is replaced; existing saved uploads and their API remain compatible.
+- `shared/video-links.ts` parses allowlisted provider URLs and constructs official player URLs. Preview uses provider iframes; no external script/HTML is accepted from input. Open-original links are always available. Provider availability and embedding restrictions still apply.
+- `POST /api/clips/link` stores a `source: 'link'` reference with a canonical provider URL/video ID and explicit start/end. It saves metadata only, preserving original attribution and challenge/relay reference IDs. Linked references intentionally do not claim a downloaded file size or known duration.
+- Moment selection is 0.25–90 seconds within the video's first 24 hours. It is reference timing, not an exported video trim. YouTube embed boundaries use whole seconds; TikTok seeks/pauses via origin- and frame-checked player messages. Provider blocking can prevent playback.
+- TikTok short links are resolved server-side with manual, bounded redirects, a total eight-second timeout, HTTPS/provider-host checks at every step, and no credential forwarding. Other URLs are never fetched by the server. Full TikTok URLs avoid the resolver network request. Provider/network failures ask for the full public URL.
+- Arena/ref changes and unmount cancel stale requests; saved IDs continue through onChange, preserving existing proof invalidation. Locked guest/premiere views cannot replace references. Cancelling a save/preview preserves the prior saved reference.
+- Only existing Source/Anton fonts and supplied logo are used. No automatic map reconstruction, arbitrary-site video import, or download/extraction is claimed.
 
-Validation and browser walkthrough are the integrator's responsibility after endpoint and page integration. Browser codec support is checked by video decoding; unsupported MOV codecs surface an actionable error. Clip recreation is explicitly guided, not automatic map reconstruction.
+Validation: existing 65 app tests, TypeScript and production build pass. Targeted temporary API smoke checks cover supported URL parsing, restricted redirects, invalid ranges/hosts, metadata persistence/restart and linked media handling. Claude 2 owns independent executable regression tests; none are authored in its tracked test paths here. The local browser preview was declined by the browser origin permission gate, so actual visual playback/guest browser behavior remains unverified. Do not claim browser QA or bypass that refusal.

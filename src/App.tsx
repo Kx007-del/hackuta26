@@ -501,7 +501,7 @@ export default function App() {
                 {
                   n: "01",
                   title: "MAKE THE SHOT",
-                  text: "Choose your world. Upload a clip, pick its defining moment, and recreate the action.",
+                  text: "Choose your world. Paste a YouTube or TikTok link, pick its defining moment, and recreate the action.",
                   icon: "⌖",
                 },
                 {
