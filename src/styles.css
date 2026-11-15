@@ -469,22 +469,6 @@ footer {
   color: #888;
   padding: 13px 0;
 }
-.tip-panel {
-  border: 1px solid var(--border);
-  padding: 20px;
-  margin-top: 15px;
-}
-.tip-panel > span {
-  font: 9px Source;
-  color: #e85770;
-  letter-spacing: 1px;
-}
-.tip-panel p {
-  font-size: 14px;
-  color: #929297;
-  line-height: 1.6;
-  margin-top: 9px;
-}
 .share-panel {
   padding: 22px;
   border: 1px solid var(--border);
