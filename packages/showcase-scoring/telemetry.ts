@@ -60,8 +60,8 @@ export function signedTurnDeg(fromRad: number, toRad: number) {
 }
 
 export const TELEMETRY_WEIGHTS = { distance: 25, turn: 25, aimHold: 20, onStructure: 15, singleHipShot: 15 } as const;
-/** A miss can never score above this, whatever else matches. */
-export const MISS_CAP = 25;
+/** A miss halves the final score: it never beats a comparable hit, but a close recreation still shows. */
+export const MISS_FACTOR = .5;
 
 /**
  * Score telemetry 0–100. `hit` and `onStructure` and `distanceM` should come from the
@@ -78,17 +78,17 @@ export function scoreTelemetry(t: AttemptTelemetry, derived: { hit: boolean; onS
   };
   let total = 0;
   for (const key of Object.keys(TELEMETRY_WEIGHTS) as Array<keyof typeof TELEMETRY_WEIGHTS>) total += components[key] * TELEMETRY_WEIGHTS[key];
-  let score = Math.round(total / 100);
-  if (!derived.hit) score = Math.min(score, MISS_CAP);
+  // The miss penalty is applied once, in blendScore, so this shows how closely the run matched.
+  const score = Math.round(total / 100);
   return { hit: derived.hit, onStructure: derived.onStructure, distanceM: derived.distanceM, turnDeg, components, score: clamp(score, 0, 100) };
 }
 
 /** Blend weights for the final score. */
 export const BLEND = { gemini: 60, telemetry: 40 } as const;
-/** Final 0–100. When Gemini is unavailable the telemetry score stands alone. A miss is capped. */
+/** Final 0–100. When Gemini is unavailable the telemetry score stands alone. A miss is halved. */
 export function blendScore(telemetry: number, gemini: number | null, hit: boolean) {
   const raw = gemini === null ? telemetry : (gemini * BLEND.gemini + telemetry * BLEND.telemetry) / 100;
-  return Math.round(clamp(hit ? raw : Math.min(raw, MISS_CAP), 0, 100));
+  return Math.round(clamp(hit ? raw : raw * MISS_FACTOR, 0, 100));
 }
 
 const finite = (v: unknown, lo: number, hi: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;

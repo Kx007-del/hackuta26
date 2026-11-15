@@ -375,7 +375,7 @@ function Bar({ label, value }: { label: string; value: number }) {
 }
 
 const AI_LABELS: Record<string, string> = { setup: 'Set-up', turn: 'Turn', aimHold: 'Aim hold', shot: 'Shot', timing: 'Timing' };
-const GAME_LABELS: Record<string, string> = { distance: 'Distance', turn: 'Turn', aimHold: 'Aim hold', onStructure: 'On the build', singleHipShot: 'One hip-fire shot' };
+const GAME_LABELS: Record<string, string> = { distance: 'Distance', turn: 'Turn', aimHold: 'Aim hold', onStructure: 'On the build / jump', singleHipShot: 'One hip-fire shot' };
 const UNAVAILABLE: Record<string, string> = {
   'no-key': 'AI scoring isn’t set up on this server yet.',
   'rate-limited': 'AI scoring is busy right now.',
@@ -406,7 +406,7 @@ function ScoringPanel({ consent, onConsent, scoring, recordingSupported }: { con
 function ScoreResult({ result }: { result: ScoreResponse }) {
   const { ai, telemetry } = result;
   return <div className="showcase-score__result">
-    <p className="showcase-score__total"><b>{result.score}</b><span>/ 100</span>{!result.hit && <em>Missed — a miss scores 25 at most.</em>}</p>
+    <p className="showcase-score__total"><b>{result.score}</b><span>/ 100</span>{!result.hit && <em>Missed — a miss halves your score.</em>}</p>
     {ai.status === 'ok' && <p className="showcase-score__feedback">{ai.feedback}</p>}
     <div className="showcase-score__parts">
       {ai.status === 'ok' && <div>
