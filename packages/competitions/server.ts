@@ -50,7 +50,7 @@ export function registerCompetitions(app: Express, options: {
   }));
   app.post('/api/organizer/enroll', wrap((req, res) => {
     const actor = identity(req), b = body(req);
-    if (!HOSTING_PACKAGES.includes(b.package as typeof HOSTING_PACKAGES[number]) || b.acknowledgeDemo !== true || Object.keys(b).some(k => !['package', 'acknowledgeDemo'].includes(k))) reject(400, 'Select a demonstration package and acknowledge that there is no charge or real prize.');
+    if (!HOSTING_PACKAGES.includes(b.package as typeof HOSTING_PACKAGES[number]) || b.acknowledgeDemo !== true || Object.keys(b).some(k => !['package', 'acknowledgeDemo'].includes(k))) reject(400, 'Select a hosting package and acknowledge that there is no charge or real prize.');
     res.json(store.enroll(actor.id, b.package as typeof HOSTING_PACKAGES[number]));
   }));
   app.get('/api/organizer/events', wrap((req, res) => res.json({ events: store.ownedList(identity(req).id), persistence: store.persistence })));
