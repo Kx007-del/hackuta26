@@ -1,7 +1,10 @@
 export type ArenaId = 'rooftop-v1' | 'buildyard-v1' | 'tactical-v1';
 export type TemplateId = 'jump' | 'spin180' | 'spin360' | 'ramp-shot' | 'wall-edit' | 'precision' | 'dash-peek';
 export type MechanicState = { builds: number; dashes: number; speedAtShot: number; edited?: boolean };
-export type ClipReference = { id: string; arenaId: ArenaId; name: string; contentType: string; size: number; duration: number; start: number; end: number; createdAt: string };
+type ReferenceMoment = { id: string; arenaId: ArenaId; name: string; start: number; end: number; createdAt: string };
+export type UploadedClipReference = ReferenceMoment & { source?: 'upload'; contentType: string; size: number; duration: number };
+export type LinkedClipReference = ReferenceMoment & { source: 'link'; provider: 'youtube' | 'tiktok'; videoId: string; url: string };
+export type ClipReference = UploadedClipReference | LinkedClipReference;
 export type ChallengeConfig = {
   schemaVersion: 1;
   arenaId: ArenaId;

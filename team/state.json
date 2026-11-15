@@ -1,6 +1,6 @@
 {
-  "status": "paused",
-  "reason": "Human requested feature development paused for four-computer onboarding.",
+  "status": "active",
+  "reason": "Human explicitly resumed hackathon work under Codex 1 coordination; H26-3 is the bounded next milestone.",
   "repository": "Kx007-del/hackuta26",
   "integrationBranch": "build/five-agent-h26",
   "coordinator": "codex-1",

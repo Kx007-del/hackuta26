@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import * as THREE from 'three';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {ARENAS} from '../../shared/contracts';
 import {createEnvironment} from './environments';
 import type {ChallengeConfig, AttemptResult, ReplayFrame} from '../../shared/contracts';
@@ -32,48 +33,112 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});}
     catch{setError('This arena needs a browser with WebGL enabled. Try Chrome or Edge with hardware acceleration.');return;}
     setError('');
-    renderer.shadowMap.enabled=true;
+    const gl = renderer.getContext();
+    const rendererInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const softwareRendering = rendererInfo &&
+      /swiftshader|llvmpipe|software rasterizer/i.test(gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL));
+    const compactRendering = softwareRendering || window.devicePixelRatio > 1.75 || container.clientWidth < 600;
+    renderer.shadowMap.enabled=!compactRendering;
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.shadowMap.autoUpdate=false;
+    renderer.shadowMap.needsUpdate=true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,softwareRendering?.8:compactRendering?1.25:1.5));
     renderer.outputColorSpace=THREE.SRGBColorSpace;
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure=roof?.93:1;
     container.appendChild(renderer.domElement);
     const scene=new THREE.Scene();
-    scene.background=new THREE.Color('#0b101b');
-    scene.fog=new THREE.FogExp2('#10182a',0.012);
     const camera=new THREE.PerspectiveCamera(68,1,.1,250);
     camera.rotation.order='YXZ';
-    scene.add(new THREE.HemisphereLight(0xaacbff,0x18202b,2.3));
-    const sun=new THREE.DirectionalLight(0xffc7a4,2.6);sun.position.set(12,24,8);scene.add(sun);
     const materials:THREE.Material[]=[];
     const geometries:THREE.BufferGeometry[]=[];
     function material(color:string,emissive?:string){const m=new THREE.MeshStandardMaterial({color,roughness:.8,...(emissive?{emissive,emissiveIntensity:2}:{})});materials.push(m);return m;}
     const concrete=material('#293343'),dark=material('#111b2b'),red=material('#ff3e47','#c91d2a'),white=material('#e8f0f4'),blue=material('#55d6e8','#276d84');
     function box(w:number,h:number,d:number,x:number,y:number,z:number,m:THREE.Material){const g=new THREE.BoxGeometry(w,h,d);geometries.push(g);const o=new THREE.Mesh(g,m);o.position.set(x,y,z);scene.add(o);return o;}
-    const environment=createEnvironment(scene,arenaId,targetDistance);
+    const environment=createEnvironment(scene,arenaId,targetDistance,renderer.shadowMap.enabled);
     const {height,radius}=targetForArena(arenaId);
     const targetPosition=new THREE.Vector3(0,height,-targetDistance);
     const targetGeometry=new THREE.CircleGeometry(radius,48);geometries.push(targetGeometry);
     const target=new THREE.Mesh(targetGeometry,red);target.position.copy(targetPosition);scene.add(target);
-    const innerGeometry=new THREE.RingGeometry(.58*radius/1.65,.7*radius/1.65,40);geometries.push(innerGeometry);
+    const innerGeometry=new THREE.RingGeometry(.7*radius,.79*radius,40);geometries.push(innerGeometry);
     const inner=new THREE.Mesh(innerGeometry,white);inner.position.copy(targetPosition);inner.position.z+=.012;scene.add(inner);
-    const dotGeometry=new THREE.CircleGeometry(.12*radius/1.65,24);geometries.push(dotGeometry);
+    const dotGeometry=new THREE.CircleGeometry(.16*radius,24);geometries.push(dotGeometry);
     const dot=new THREE.Mesh(dotGeometry,white);dot.position.copy(targetPosition);dot.position.z+=.02;scene.add(dot);
 
     // A compact, original weapon silhouette attached to the camera.
     const weapon=new THREE.Group();
-    function gunBox(w:number,h:number,d:number,x:number,y:number,z:number,m:THREE.Material){const g=new THREE.BoxGeometry(w,h,d);geometries.push(g);const o=new THREE.Mesh(g,m);o.position.set(x,y,z);weapon.add(o);}
+    function gunBox(w:number,h:number,d:number,x:number,y:number,z:number,m:THREE.Material,bevel=0){
+      const geometry=bevel?new RoundedBoxGeometry(w,h,d,2,bevel):new THREE.BoxGeometry(w,h,d);
+      geometries.push(geometry);
+      const mesh=new THREE.Mesh(geometry,m);
+      mesh.position.set(x,y,z);
+      weapon.add(mesh);
+    }
+    function gunCylinder(front:number,back:number,length:number,y:number,z:number,m:THREE.Material) {
+      const geometry=new THREE.CylinderGeometry(front,back,length,16);
+      geometries.push(geometry);
+      const mesh=new THREE.Mesh(geometry,m);
+      mesh.rotation.x=-Math.PI/2;
+      mesh.position.set(.24,y,z);
+      weapon.add(mesh);
+    }
     const gunFinish=material(roof?'#4a514a':buildyard?'#9059ce':'#667f84');gunFinish.metalness=roof?.65:.35;gunFinish.roughness=.4;
-    gunBox(buildyard?.19:.12,.14,.55,.24,-.22,-.48,gunFinish);
-    gunBox(buildyard?.10:.045,buildyard?.08:.045,roof?.75:buildyard?.32:.52,.24,-.18,-.88,concrete);
-    gunBox(.075,roof?.09:.04,roof?.28:.16,.24,-.11,-.48,roof?dark:red);
-    gunBox(.09,.19,.12,.24,-.34,-.41,dark);
-    if(buildyard){gunBox(.16,.08,.22,.24,-.26,-.76,gunFinish);gunBox(.20,.05,.12,.24,-.17,-.62,white);}
-    if(tactical){gunBox(.07,.24,.16,.24,-.35,-.59,dark);gunBox(.05,.04,.42,.24,-.12,-.76,white);}
-    if(roof){const scopeGeometry=new THREE.CylinderGeometry(.055,.055,.32,16);geometries.push(scopeGeometry);const scope=new THREE.Mesh(scopeGeometry,dark);scope.rotation.x=Math.PI/2;scope.position.set(.24,-.08,-.5);weapon.add(scope);}
+    const gunTrim=material(roof?'#b1a48b':buildyard?'#ffd177':'#abd3cf');
+    gunBox(buildyard?.19:.12,.115,.52,.24,-.24,-.52,gunFinish,.019);
+    gunBox(buildyard?.15:.092,.064,.24,.24,-.192,-.58,gunFinish,.014);
+    gunCylinder(buildyard?.046:.021,buildyard?.042:.026,roof?.75:buildyard?.32:.52,-.18,-.88,concrete);
+    gunCylinder(buildyard?.053:.031,buildyard?.053:.032,.076,-.18,roof?-1.23:buildyard?-1.035:-1.114,dark);
+    gunBox(.065,.032,.12,.24,-.15,-.52,buildyard?gunTrim:dark,.008);
+    gunBox(.09,.19,.12,.24,-.34,-.41,dark,.012);
+    gunBox(.095,.036,.22,.24,-.136,-.655,gunTrim);
+    for(let i=0;i<5;i++) gunBox(.112,.019,.017,.24,-.129,-.69+i*.034,dark);
+    if(buildyard){gunBox(.16,.08,.22,.24,-.26,-.76,gunFinish,.02);gunBox(.19,.038,.12,.24,-.17,-.63,white,.011);}
+    if(tactical){gunBox(.07,.24,.16,.24,-.35,-.59,dark,.01);gunBox(.051,.022,.37,.24,-.136,-.74,gunTrim,.004);}
+    if(roof){
+      const lens=material('#527480','#233e42');lens.roughness=.22;
+      gunBox(.08,.058,.055,.24,-.151,-.48,dark,.006);
+      gunCylinder(.033,.034,.24,-.102,-.51,dark);
+      gunCylinder(.045,.04,.07,-.102,-.66,gunFinish);
+      gunCylinder(.043,.045,.063,-.102,-.377,gunFinish);
+      gunCylinder(.036,.036,.006,-.102,-.344,lens);
+      gunBox(.027,.026,.039,.24,-.056,-.515,gunTrim,.004);
+    }
+    const muzzleGeometry=new THREE.IcosahedronGeometry(.085,0);
+    geometries.push(muzzleGeometry);
+    const flashMaterial=new THREE.MeshBasicMaterial({color:buildyard?'#fff2ad':'#ffca77',transparent:true,depthWrite:false});
+    materials.push(flashMaterial);
+    const flash=new THREE.Mesh(muzzleGeometry,flashMaterial);
+    flash.scale.set(.64,.64,1.65);
+    flash.position.set(.24,-.18,roof?-1.29:buildyard?-1.08:-1.17);
+    flash.visible=false;
+    weapon.add(flash);
+    const impactGeometry=new THREE.RingGeometry(radius*1.03,radius*1.12,32);
+    const impactMaterial=new THREE.MeshBasicMaterial({color:buildyard?'#fff4a1':'#fff3d2',transparent:true,depthWrite:false,opacity:0});
+    geometries.push(impactGeometry);materials.push(impactMaterial);
+    const impactRing=new THREE.Mesh(impactGeometry,impactMaterial);
+    impactRing.position.copy(targetPosition);impactRing.position.z+=.028;
+    impactRing.visible=false;
+    scene.add(impactRing);
+    const dashMaterial=new THREE.MeshBasicMaterial({color:'#b9dce4',transparent:true,depthWrite:false,opacity:0});
+    materials.push(dashMaterial);
+    const dashGeometry=new THREE.PlaneGeometry(.065,.003);
+    geometries.push(dashGeometry);
+    const dashStreaks=new THREE.Group();
+    for(const side of [-1,1]) for(let i=0;i<3;i++){
+      const streak=new THREE.Mesh(dashGeometry,dashMaterial);
+      streak.position.set(side*(.31+i*.041),.08-i*.08,-.45);
+      streak.rotation.z=side*i*.13;
+      dashStreaks.add(streak);
+    }
+    dashStreaks.visible=false;
+    camera.add(dashStreaks);
     camera.add(weapon);scene.add(camera);
     const structures=new THREE.Group();
     scene.add(structures);
     const timber=material('#bb8148'), edge=material('#efbf81');
+    timber.emissive.set('#d28340');
+    edge.emissive.set('#ffd090');
+    let structureEffectAt=-Infinity;
     const platform=box(2.8,.16,Math.hypot(4,1.4),0,.62,0,timber);
     platform.rotation.x=Math.atan2(1.4,4);
     structures.add(platform);
@@ -83,10 +148,41 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
       box(2.9,2.25,.2,0,3.475,0,edge)];
     wallParts.forEach(part=>structures.add(part));
     const wallBounds=wallParts.map(part=>new THREE.Box3().setFromObject(part));
+    if(buildyard){
+      const board=material('#cf9051'),grain=material('#9b6239'),fastener=material('#4c6270');
+      function detail(parent:THREE.Object3D,w:number,h:number,d:number,x:number,y:number,z:number,m:THREE.Material){
+        parent.add(box(w,h,d,x,y,z,m));
+      }
+      for(let i=0;i<10;i++){
+        const z=-1.91+i*.424;
+        detail(platform,2.74,.022,.407,0,.083,z,i%3===0?edge:board);
+        for(const x of [-1.18,1.18]) detail(platform,.045,.012,.045,x,.099,z,fastener);
+      }
+      for(const x of [-1.34,1.34]) detail(platform,.11,.085,4.22,x,-.086,0,grain);
+      wallParts.forEach((part,index)=>{
+        const {width,height}= (part.geometry as THREE.BoxGeometry).parameters;
+        const count=Math.ceil(height/.38);
+        for(let i=0;i<count;i++){
+          const h=height/count;
+          detail(part,width-.035,h-.012,.012,0,-height/2+h*(i+.5),.102,i%3===0?edge:board);
+        }
+        for(const x of [-width/2+.055,width/2-.055]) detail(part,.086,height-.014,.025,x,0,.115,grain);
+        for(const y of [-height/2+.055,height/2-.055]) detail(part,width-.025,.083,.031,0,y,.116,index===3?edge:grain);
+      });
+      platform.castShadow=true;
+      platform.receiveShadow=true;
+      wallParts.forEach(part=>{part.castShadow=true;part.receiveShadow=true;});
+    }
     scene.updateMatrixWorld(true);
     const staticCover=tactical?environment.blockers.map(mesh=>new THREE.Box3().setFromObject(mesh)):[];
     function showBuild(count:number,opened:boolean){
-      structures.visible=buildyard&&count>0;
+      const visible=buildyard&&count>0;
+      const changed=structures.visible!==visible||(visible&&wallEdit&&wallParts[3].visible===opened);
+      if(changed){
+        renderer.shadowMap.needsUpdate=true;
+        structureEffectAt=visible?performance.now():-Infinity;
+      }
+      structures.visible=visible;
       platform.visible=!wallEdit;
       wallParts.forEach((part,index)=>{part.visible=wallEdit&&!(opened&&index===3);});
     }
@@ -99,6 +195,8 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     let dashCleared=false,rampTakeoff=false,firePending=false;
     let started=performance.now(),last=started,lastRecord=0,lastHud=0,raf=0,disposed=false,replayEnded=false;
     let frames:ReplayFrame[]=[],shotTime=-1,replayShotShown=false;
+    let shotEffectAt=-Infinity,impactEffectAt=-Infinity;
+    let replayDashVelocity=0;
     let message=objective;
     function updateHud(){setHud({air,spin:Math.round(netSpinDegrees(yaw,takeoffYaw)),message,ready,finished,builds,edited,dashes,ads});}
     function snapshot(t:number):ReplayFrame{return {t,x,y,z,yaw,pitch,...(roof?{}:{builds,dashes,edited})};}
@@ -112,6 +210,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
       air=false;hasJumped=false;takeoffYaw=yaw;finished=false;keys.clear();
       builds=0;dashes=0;edited=false;ads=false;speed=0;dashLeft=0;dashCleared=false;rampTakeoff=false;firePending=false;
       started=performance.now();lastRecord=0;frames=[snapshot(0)];shotTime=-1;target.material=red;
+      shotEffectAt=impactEffectAt=-Infinity;
       showBuild(0,false);message=objective;updateHud();
     }
     function focusArena(){arena.current?.focus({preventScroll:true});}
@@ -181,6 +280,8 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
         blocked?'Cover blocked the shot.':!hit?'Missed. Try again.':wallEdit&&!throughOpening?'Shoot through the opening.':
         `Add ${Math.ceil(requiredSpinDegrees-spin)}° more rotation.`;
       shotTime=Math.max(1,now-started,(frames[frames.length-1]?.t??0)+.001);
+      shotEffectAt=now;
+      if(hit)impactEffectAt=now;
       finished=true;frames.push(snapshot(shotTime));if(hit)target.material=blue;updateHud();
       callbacks.current.onComplete({id:crypto.randomUUID(),config:{...config},success,targetHit:hit,airborneAtShot:air,rotationDegrees:spin,durationMs:shotTime,frames:[...frames],shotTimeMs:shotTime,...(roof?{}:{mechanicState})});
       if(document.pointerLockElement===renderer.domElement)document.exitPointerLock();
@@ -205,8 +306,10 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     function animate(now:number){if(disposed)return;raf=requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.04);last=now;
       if(replay){
         const t=now-started;const data=replay.frames;
-        if(data.length){let i=0;while(i<data.length-2&&data[i+1].t<t)i++;const a=data[i],b=data[Math.min(i+1,data.length-1)];const f=b.t===a.t?0:THREE.MathUtils.clamp((t-a.t)/(b.t-a.t),0,1);x=THREE.MathUtils.lerp(a.x,b.x,f);y=THREE.MathUtils.lerp(a.y,b.y,f);z=THREE.MathUtils.lerp(a.z,b.z,f);yaw=THREE.MathUtils.lerp(a.yaw,b.yaw,f);pitch=THREE.MathUtils.lerp(a.pitch,b.pitch,f);const frame=t>=b.t?b:a;showBuild(frame.builds??0,frame.edited===true);}
-        if(!replayShotShown&&t>=replay.shotTimeMs){replayShotShown=true;if(replay.targetHit)target.material=blue;message=replay.success?'SHOT LANDED.':'RUN IT BACK.';updateHud();}
+        if(data.length){let i=0;while(i<data.length-2&&data[i+1].t<t)i++;const a=data[i],b=data[Math.min(i+1,data.length-1)];const f=b.t===a.t?0:THREE.MathUtils.clamp((t-a.t)/(b.t-a.t),0,1);x=THREE.MathUtils.lerp(a.x,b.x,f);y=THREE.MathUtils.lerp(a.y,b.y,f);z=THREE.MathUtils.lerp(a.z,b.z,f);yaw=THREE.MathUtils.lerp(a.yaw,b.yaw,f);pitch=THREE.MathUtils.lerp(a.pitch,b.pitch,f);const frame=t>=b.t?b:a;showBuild(frame.builds??0,frame.edited===true);
+          replayDashVelocity=f<1&&b.t>a.t?1000*(b.x-a.x)/(b.t-a.t):0;
+        }
+        if(!replayShotShown&&t>=replay.shotTimeMs){replayShotShown=true;shotEffectAt=now;if(replay.targetHit){target.material=blue;impactEffectAt=now;}message=replay.success?'SHOT LANDED.':'RUN IT BACK.';updateHud();}
         if(!replayEnded&&t>Math.max(replay.durationMs,data[data.length-1]?.t??0)+1100){replayEnded=true;callbacks.current.onReplayEnd?.();}
       }else if(ready&&!finished){
         if(keys.has('KeyQ')||keys.has('ArrowLeft'))yaw+=5.9*dt;
@@ -253,7 +356,20 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
         if(now-lastHud>100){updateHud();lastHud=now;}
       }
       camera.position.set(x,y,z);camera.rotation.set(pitch,yaw,0,'YXZ');
-      weapon.position.y=air?Math.sin(now*.008)*.008:0;
+      const sinceShot=now-shotEffectAt,sinceImpact=now-impactEffectAt;
+      flash.visible=sinceShot<70&&!ads;
+      flashMaterial.opacity=Math.max(0,1-sinceShot/70);
+      impactRing.visible=sinceImpact<230;
+      impactMaterial.opacity=Math.max(0,.85*(1-sinceImpact/230));
+      impactRing.scale.setScalar(1+.3*Math.min(1,sinceImpact/230));
+      if(buildyard){
+        const highlight=Math.max(0,1-Math.max(0,now-structureEffectAt)/170);
+        timber.emissiveIntensity=highlight*.24;
+        edge.emissiveIntensity=highlight*.37;
+      }
+      dashStreaks.visible=dashPeek&&(replay?replayDashVelocity>7:dashLeft>0);
+      dashMaterial.opacity=dashStreaks.visible?.27:0;
+      weapon.position.y=-.026+(air?Math.sin(now*.008)*.008:0);
       const fov=ads?40:68;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}weapon.position.x=ads?-.22:0;
       renderer.render(scene,camera);
     }
@@ -266,7 +382,11 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     {error?<div className="game-error">{error}</div>:<>
       <div className="game-top"><span className="game-location">{location}</span><span className="game-live">{replay?'● REPLAY':'● PRACTICE ARENA'}</span></div>
       <div className="game-crosshair" aria-hidden="true"><i/><i/></div>
-      <div className="game-objective"><span className="game-kicker">THE SHOT</span><strong>{objective}</strong><span>{config.targetDistance}m target · {replay?'Recorded gameplay':'One shot per attempt'}</span></div>
+      <div className="game-objective">
+        <span className="game-kicker">THE SHOT</span>
+        <strong>{objective}</strong>
+        <span>{targetDistance}m target · {replay?'Recorded gameplay':'One shot per attempt'}</span>
+      </div>
       {!replay&&<div className="game-telemetry">
         {tactical?<span>{dashPeek?(hud.dashes?'Dash cleared':'Dash from cover'):'Stand still to shoot'}</span>:<span className={hud.air?'is-met':''}>{hud.air?'Airborne':'Get airborne'}</span>}
         {buildyard&&<span>{hud.edited?'Wall edited':hud.builds?'Build placed':'Place build'}</span>}
@@ -277,7 +397,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
 {wallEdit&&<button disabled={!hud.builds||hud.edited||hud.finished} onClick={()=>actions.current?.edit()}>Edit wall <kbd>G</kbd></button>}
 {dashPeek&&<button disabled={!!hud.dashes||hud.finished} onClick={()=>actions.current?.dash()}>Dash <kbd>X</kbd></button>}
 <button aria-pressed={hud.ads} disabled={hud.finished} onClick={()=>actions.current?.aim()}>Aim down sights <kbd>C</kbd></button>
-{(!roof||requiredSpinDegrees===0)&&<button disabled={hud.finished} onClick={()=>actions.current?.align()}>ALIGN AIM <kbd>PRACTICE ASSIST</kbd></button>}<button disabled={!hud.ready||hud.finished} onClick={()=>actions.current?.fire()}>⌖ FIRE <kbd>F</kbd></button><button onClick={()=>{actions.current?.reset();arena.current?.focus({preventScroll:true})}}>↻ RETRY <kbd>R</kbd></button></div><div className="game-controls"><span><kbd>WASD</kbd> move</span><span><kbd>Q / E</kbd> spin</span><span><kbd>↑ / ↓</kbd> aim</span><span>Click arena for mouse aim · Esc releases</span></div></>}</div>
+{(!roof||requiredSpinDegrees===0)&&<button disabled={hud.finished} onClick={()=>actions.current?.align()}>ALIGN AIM <kbd>PRACTICE ASSIST</kbd></button>}<button disabled={!hud.ready||hud.finished} onClick={()=>actions.current?.fire()}>⌖ FIRE <kbd>F</kbd></button><button onClick={()=>{actions.current?.reset();arena.current?.focus({preventScroll:true})}}>↻ RETRY <kbd>R</kbd></button></div><div className="game-controls"><span><kbd>WASD</kbd> move</span><span><kbd>Q / E</kbd> {tactical ? 'turn' : 'spin'}</span><span><kbd>↑ / ↓</kbd> aim</span><span>Click arena for mouse aim · Esc releases</span></div></>}</div>
     </>}
   </section>;
 }

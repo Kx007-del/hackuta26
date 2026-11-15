@@ -1,6 +1,7 @@
 import { canonicalRelayRoute, hasHostMarker, parseRoute, rememberHost, routeSearch, type Route } from './navigation';
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import ChallengeBuilder from "../packages/challenges/ChallengeBuilder";
+import PracticeGuide from "../packages/challenges/PracticeGuide";
 import EnvironmentPicker from './components/EnvironmentPicker';
 import ClipWorkbench from './components/ClipWorkbench';
 import {
@@ -354,6 +355,8 @@ export default function App() {
   }
 
   const guest = screen === 'relay' && !!relay && !host;
+  const relaySpinDegrees =
+    relay?.challenge.arenaId === "rooftop-v1" ? relay.challenge.requiredSpinDegrees : 0;
   const arenaInfo = ARENAS.find(a => a.id === config.arenaId)!;
   const replayAttempt =
     replayIndex === 0
@@ -361,6 +364,8 @@ export default function App() {
       : replayIndex === 1
         ? relay?.guestAttempt
         : undefined;
+  const playConfig = replayAttempt?.config ?? config;
+  const playArenaInfo = ARENAS.find(a => a.id === playConfig.arenaId) ?? arenaInfo;
   const attemptGeneration = generation.current;
   return (
     <div className="app-shell">
@@ -498,7 +503,7 @@ export default function App() {
                 {
                   n: "01",
                   title: "MAKE THE SHOT",
-                  text: "Choose your world. Upload a clip, pick its defining moment, and recreate the action.",
+                  text: "Choose your world. Paste a YouTube or TikTok link, pick its defining moment, and recreate the action.",
                   icon: "⌖",
                 },
                 {
@@ -664,7 +669,7 @@ export default function App() {
                     </span>
                     <strong>{n}</strong>
                     <small>
-                      {relay.challenge.requiredSpinDegrees}° ·{" "}
+                      {relaySpinDegrees > 0 && `${relaySpinDegrees}° · `}
                       {relay.challenge.targetDistance}m · LANDED ✓
                     </small>
                   </button>
@@ -693,7 +698,7 @@ export default function App() {
                   <span>
                     <i /> {replayAttempt ? "TEAMMATE REPLAY" : "LIVE PRACTICE"}
                   </span>
-                  <span>{arenaInfo.game} / {arenaInfo.title}</span>
+                  <span>{playArenaInfo.game} / {playArenaInfo.title}</span>
                 </div>
                 <Suspense
                   fallback={
@@ -730,7 +735,7 @@ export default function App() {
                     <div>
                       <strong>{relay.hostName} passed you the play.</strong>
                       <p>
-                        {relay.challenge.requiredSpinDegrees}° rotation ·{" "}
+                        {relaySpinDegrees > 0 && `${relaySpinDegrees}° rotation · `}
                         {relay.challenge.targetDistance}m target · Your turn to
                         answer.
                       </p>
@@ -745,12 +750,7 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                <div className="tip-panel">
-                  <span>THE PLAYBOOK</span>
-                  <p>
-                    {config.arenaId === 'rooftop-v1' ? 'Jump, spin and land your sniper shot. Raise the distance or rotation to challenge your squad.' : config.arenaId === 'buildyard-v1' ? 'Build a ramp or wall, edit your opening, then land your airborne shot. Build your version of the reference moment.' : 'Settle your movement for a precision shot, or dash from cover before stopping and firing. Raise the distance after you prove it.'}
-                  </p>
-                </div>
+                <PracticeGuide config={playConfig} isReplay={!!replayAttempt} />
               </section>
               <aside>
                 <ChallengeBuilder

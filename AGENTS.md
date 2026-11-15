@@ -12,7 +12,7 @@ Cycle: plan, review plan, propose implementation, coordinator application, indep
 
 Permanent role folders are team/roles/ROLE/; read team/roles/README.md for ownership and isolation rules. Use your own complete worktree at ../agent-worktrees/ROLE/ and agents/ROLE branch as the starting point. Never edit or switch branches in another role's working folder. Each role records new handoffs in its own team/roles/ROLE/ folder; docs/team/ retains historical evidence. These folders and branch rules coordinate writes; they are not filesystem access controls.
 
-Feature development is PAUSED at human request. Read team/state.json and docs/MULTI-COMPUTER.md. Only coordination, setup and connectivity checks are authorized during this pause. Do not restart the old dispatcher.
+The human resumed bounded hackathon work under Codex 1 coordination. Read team/state.json, docs/H26-3-PLAN.md and remote automation/control.json for the current goal and status. Do not restart the old dispatcher. Codex 3 must verify its previously blocked coding-file access before implementation. No task assignment authorizes a main/integration merge or deployment.
 
 The human now authorizes building/publishing the cross-computer relay described in docs/AUTOMATION.md. Codex 1 controls automation/queue; workers follow bounded assignments through scripts/relay.mjs. Setup does not resume features. Only a real explicit human resume recorded in remote control humanResume may supersede the historical paused text for that approved goal. The runner may commit/publish its own validated task branches as part of that goal; no main/integration merge or deployment is implied. Do not fabricate approval text or start a second worker for an active role.
 

@@ -4,9 +4,31 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initialControl, makeTask, nextTask, canRun, changedPaths, assertOwned, validatePlan, redact } from './relay-core.mjs';
+import { heartbeatUpdate, workerGoal } from './relay-core.mjs';
 import { provider } from './relay-runtime.mjs';
 const sha = 'a'.repeat(40);
 const task = (role = 'codex-2', kind = 'implement', extra = {}) => makeTask({ role, kind, baseSha: sha, instruction: 'Bounded task', ...extra });
+
+test('worker requirements exclude coordinator-only first-turn restrictions', () => {
+  const control = { goal: 'For this first planning turn do not invoke tools.', productGoal: 'Implement tested runtime config and practice guidance.', coordinatorNotes: 'Codex 1 plans read-only.' };
+  assert.equal(workerGoal(control), control.productGoal);
+  assert.doesNotMatch(workerGoal(control), /do not invoke tools|Codex 1 plans/);
+  assert.equal(workerGoal({ goal: 'Legacy product-only goal' }), 'Legacy product-only goal');
+});
+
+test('idle heartbeats bound GitHub writes while checking lease ownership and reporting state changes', () => {
+  let state = { status: 'waiting', lease: { session: 'one', at: new Date(0).toISOString() } };
+  let writes = 0;
+  for (let time = 30000; time <= 3600000; time += 30000) {
+    const next = heartbeatUpdate(state, 'one', { status: 'waiting' }, time);
+    if (next !== state) writes++;
+    state = next;
+  }
+  assert.equal(writes, 60);
+  assert.equal(state.lease.at, new Date(3600000).toISOString());
+  assert.equal(heartbeatUpdate(state, 'one', { status: 'working' }, 3600001).status, 'working');
+  assert.throws(() => heartbeatUpdate(state, 'other', {}, 3600002), /lease lost/);
+});
 
 test('paused/stopped/blocked control fails closed except explicit setup onboarding', () => {
   const c = initialControl(sha), feature = task(), onboard = task('claude-1', 'onboard');

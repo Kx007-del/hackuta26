@@ -46,6 +46,7 @@ export function mutate(path, transform) {
   // GitHub rejects stale blob SHAs. Retry only the CAS operation, never provider work.
   for (let attempt = 0; attempt < 4; attempt++) {
     const before = optionalFile(path), data = transform(before?.data ?? null);
+    if (before && JSON.stringify(data) === JSON.stringify(before.data)) return data;
     try { putFile(path, data, before?.sha); return data; }
     catch (error) { if (!/HTTP (409|422)/.test(error.message) || attempt === 3) throw error; }
   }

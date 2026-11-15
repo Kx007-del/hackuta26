@@ -123,6 +123,8 @@ Do not put tokens, personal login details, uploads or sensitive logs in tasks. P
 
 Each provider turn has an eight-minute timeout and bounded output; Claude has a 20-turn bound. The coordinator has a 30-planning-turn cycle limit, at most four assignments per turn and 100 tasks per cycle. No quota retries, identity rotation, model fallback or repeated empty acknowledgement turns. Any worker failure blocks the shared cycle, preserves local work and records the error. A coordinator failure/limit blocks the cycle too. Workers remain listeners until stopped, but blocked tasks do not retry themselves.
 
+Idle heartbeat writes are throttled to once per minute, with immediate status changes and lease validation on every check. Unchanged queue writes are skipped. Failed provider handoffs are preserved in redacted bounded form alongside the error. Updated workers stay online after a failed turn while the queue is blocked; human-authorized recovery is still required, and the failed task is never replayed automatically. Workers launched from older code need a local restart to load these updates.
+
 For an interrupted process, first stop it locally and inspect the role's worktree/logs. A local .team-local/ROLE.lock prevents a second process in the same folder; remove that single lock only after verifying the old worker/provider is gone. The remote lease expires after two minutes. For a stale remote running turn, human-directed recovery is explicit:
 
 ```text
