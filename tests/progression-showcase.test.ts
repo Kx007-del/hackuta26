@@ -240,13 +240,12 @@ test('post-game updates: each eligible game updates real progress; caps and dupl
   });
 });
 
-test('wiring: the client retries with the same attempt id and refreshes progress after each game', () => {
+test('wiring: the client retries with the same attempt id and loads progress on the results page', () => {
   const preview = readFileSync(new URL('../packages/gameplay/HillsidePreview.tsx', import.meta.url), 'utf8');
   assert.match(preview, /void send\(submission, again\)/, 'retry re-sends the same submission');
   assert.match(preview, /submission\.attemptId/);
-  assert.match(preview, /if \(result\.progress\) onScoredRef\.current\?\.\(result\)/);
   const page = readFileSync(new URL('../src/FortniteShowcase.tsx', import.meta.url), 'utf8');
-  assert.match(page, /<HillsidePreview onScored=\{progression\.refresh\} \/>/);
+  assert.match(page, /<CommunitySection progression=\{progression\} \/>/);
   const community = readFileSync(new URL('../src/community/Community.tsx', import.meta.url), 'utf8');
   assert.match(community, /<Leaderboards profile=\{profile\} \/>/, 'the board receives refreshed player progress');
 });

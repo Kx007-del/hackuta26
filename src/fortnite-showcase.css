@@ -13,9 +13,17 @@
 .showcase-reference { display: grid; grid-template-columns: 1fr 1.8fr; gap: 40px; padding: 34px 0 56px; border-top: 1px solid #ffffff24; }
 .showcase-reference video { display: block; width: 100%; aspect-ratio: 16/9; background: #111111; border: 1px solid #ffffff24; border-radius: 8px; }
 .showcase-muted { color: #ffffffb3; }
-.showcase-practice { border-top: 1px solid #ffffff24; padding: 40px 0 60px; }
-.showcase-practice > p { max-width: 760px; }
-.showcase-start { margin: 18px 0; padding: 18px 30px; background: #e4002b; border: 0; font-weight: 700; }
+.showcase-steps { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 16px 0; border-bottom: 1px solid #ffffff24; }
+.showcase-steps > * { padding: 4px 0; color: #ffffffb3; font-weight: 700; }
+.showcase-steps a:hover { color: #ffffff; }
+.showcase-steps [aria-current="page"] { color: #ffffff; border-bottom: 2px solid #e4002b; }
+.showcase-route { padding: clamp(24px, 4vw, 50px) 0 32px; }
+.showcase-route h1 { font-size: clamp(38px, 5vw, 68px); margin: 10px 0 16px; }
+.showcase-route > p { max-width: 680px; }
+.showcase-start { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; margin: 18px 0; padding: 12px 24px; background: #e4002b; border: 0; border-radius: 4px; color: #ffffff; font-weight: 700; }
+.showcase-start:hover { background: #bc0024; }
+.showcase-score > h2 { margin: 0 0 16px; font-size: clamp(24px, 3vw, 36px); }
+.showcase-score > .showcase-start { margin: 4px 0 0; }
 .hillside-preview { margin-top: 22px; }
 .hillside-stage { position: relative; width: 100%; min-height: 250px; aspect-ratio: 16 / 9; background: #111111; border: 1px solid #ffffff30; border-radius: 8px; overflow: hidden; }
 .hillside-canvas { position: absolute; inset: 0; }
@@ -57,7 +65,7 @@
   .showcase-intro { padding: 36px 0; }
   .showcase-reference { grid-template-columns: 1fr; gap: 16px; }
 }
-.showcase-score { margin-top: 14px; padding: 18px; border: 1px solid #ffffff24; border-radius: 8px; background: #111111; }
+.showcase-score { scroll-margin-top: 16px; margin-top: 14px; padding: 18px; border: 1px solid #ffffff24; border-radius: 8px; background: #111111; }
 .showcase-score h3 { margin: 0 0 10px; font-family: Anton; font-weight: 400; font-size: 24px; letter-spacing: .02em; }
 .showcase-score h4 { margin: 12px 0 6px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #ffffffb3; }
 .showcase-score h4 small { margin-left: 6px; font-size: 12px; letter-spacing: 0; text-transform: none; color: #ffffff; }

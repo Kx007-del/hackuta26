@@ -8,7 +8,7 @@ import { createServer, type ViteDevServer } from 'vite';
 import { SHOWCASE_CONFIG, SHOWCASE_REFERENCE, isLegacyShowcaseLink } from '../src/showcase';
 
 let vite: ViteDevServer;
-let FortniteShowcase: (props: { search?: string }) => ReturnType<typeof createElement>;
+let FortniteShowcase: (props: { search?: string; path?: string }) => ReturnType<typeof createElement>;
 before(async () => {
   vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
   FortniteShowcase = (await vite.ssrLoadModule('/src/FortniteShowcase.tsx')).default;
@@ -22,16 +22,23 @@ test('public entry uses the fixed Fortnite showcase rather than the legacy app',
   assert.equal(SHOWCASE_CONFIG.arenaId, 'buildyard-v1');
   const html = renderToStaticMarkup(createElement(FortniteShowcase, { search: '' }));
   assert.match(html, /FORTNITE SHOWCASE/);
-  assert.match(html, /03 \/ COMMUNITY/);
-  assert.match(html, /Ridgeline Rae/);
-  assert.doesNotMatch(html, /community-example-tag|Example players/);
-  assert.match(html, /role="tablist" aria-label="Leaderboard"/);
-  assert.match(html, /START PRACTICE/);
+  assert.doesNotMatch(html, /community-heading|Ridgeline Rae|<canvas/);
+  assert.match(html, /href="\/practice" class="showcase-start">Try it yourself/);
   assert.match(html, /<video[^>]*controls/);
   assert.match(html, /src="\/showcase\/fortnite-reference.mp4"/);
   assert.doesNotMatch(html, /Call of Duty|Valorant|Rooftop|Courtyard|<iframe|Closest hit|Funniest fumble/i);
-  // The only form field is the community display name (added for the progression feature).
-  assert.equal([...html.matchAll(/<input/g)].length, 1);
+});
+
+test('the practice and results routes keep the arena and standings separate', () => {
+  const practice = renderToStaticMarkup(createElement(FortniteShowcase, { path: '/practice' }));
+  assert.match(practice, /Take the trick shot/);
+  assert.doesNotMatch(practice, /community-heading|<video/);
+  const results = renderToStaticMarkup(createElement(FortniteShowcase, { path: '/results' }));
+  assert.match(results, /Your shot report/);
+  assert.match(results, /No attempt report in this tab yet/);
+  assert.match(results, /Ridgeline Rae/);
+  assert.match(results, /role="tablist" aria-label="Leaderboard"/);
+  assert.doesNotMatch(results, /community-example-tag|Example players|<canvas|<video/);
 });
 
 test('old game and relay deep links cannot select legacy experiences', () => {
