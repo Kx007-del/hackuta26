@@ -2,15 +2,15 @@
   "role": "claude-2",
   "lease": {
     "session": "e72df992-cbf7-449a-af88-c8eff792aa63",
-    "at": "2026-11-15T00:45:47.502Z",
+    "at": "2026-11-15T00:45:50.696Z",
     "machine": "OmniBook"
   },
   "status": "working",
   "results": {
     "391e1041-7a7e-42ff-a7f0-dc845cbd5cb0": {
-      "status": "running",
-      "startedAt": "2026-11-15T00:45:10.694Z",
-      "baseSha": "a2d70805685bb1abda5fd3017444ecb6f185a4a7"
+      "status": "failed",
+      "finishedAt": "2026-11-15T00:45:49.030Z",
+      "error": "Paused/stopped remotely or worker lease lost"
     }
   }
 }
