@@ -22,11 +22,14 @@ test('public entry uses the fixed Fortnite showcase rather than the legacy app',
   assert.equal(SHOWCASE_CONFIG.arenaId, 'buildyard-v1');
   const html = renderToStaticMarkup(createElement(FortniteShowcase, { search: '' }));
   assert.match(html, /FORTNITE SHOWCASE/);
-  assert.match(html, /still being built/);
+  assert.match(html, /03 \/ COMMUNITY/);
+  assert.match(html, /role="tablist" aria-label="Leaderboards"/);
   assert.match(html, /START PRACTICE/);
   assert.match(html, /<video[^>]*controls/);
   assert.match(html, /src="\/showcase\/fortnite-reference.mp4"/);
-  assert.doesNotMatch(html, /Call of Duty|Valorant|Rooftop|Courtyard|<input|<iframe|leaderboard/i);
+  assert.doesNotMatch(html, /Call of Duty|Valorant|Rooftop|Courtyard|<iframe|Closest hit|Funniest fumble/i);
+  // The only form field is the community display name (added for the progression feature).
+  assert.equal([...html.matchAll(/<input/g)].length, 1);
 });
 
 test('old game and relay deep links cannot select legacy experiences', () => {
