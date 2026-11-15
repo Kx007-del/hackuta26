@@ -20,9 +20,10 @@ function useRemote<T>(path: string, version = 0) {
 function BusyOrError({ load }: { load: Load<unknown> }) {
   return load.error ? <p role="alert" className="event-error">{load.error}</p> : !load.data ? <p role="status">Loading…</p> : null;
 }
-export function DemoNotice() {
-  return <aside className="event-notice"><b>Demonstration hosting · no charge.</b> {HOSTING_NOTICE}<br />Events and ownership use temporary server storage and may be lost on restart or redeployment.</aside>;
+export function EventDetails() {
+  return <details className="event-notice"><summary>Event information</summary><p>{HOSTING_NOTICE}</p><p>Events and browser-linked ownership may reset when the server restarts or redeploys.</p></details>;
 }
+const packageLabel = (value: string) => value.replace(/-demo$/, '').replace(/^./, letter => letter.toUpperCase());
 function Identity({ onReady }: { onReady: () => void }) {
   const [name, setName] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   async function submit(e: FormEvent) {
@@ -31,7 +32,7 @@ function Identity({ onReady }: { onReady: () => void }) {
     catch (error) { setError((error as Error).message); } finally { setBusy(false); }
   }
   return <form className="event-card" onSubmit={submit}><h3>Use your browser guest profile</h3>
-    <p>Your secret browser cookie authorizes your actions. Display names are public and do not grant access to another organizer’s events. No verified identity or account recovery.</p>
+    <p>Your display name is public. Your profile and event access are linked to this browser; cross-device recovery is not available.</p>
     <label>Display name<input required maxLength={24} value={name} autoComplete="nickname" onChange={e => setName(e.target.value)} /></label>
     <button disabled={busy}>Save guest profile</button>{error && <p role="alert">{error}</p>}</form>;
 }
@@ -48,14 +49,14 @@ export function EventsBrowse() {
   const list = useRemote<{ events: CompetitionView[] }>(`/api/competitions?search=${encodeURIComponent(query)}`);
   const examples = useRemote<{ events: { id: string; title: string; organizer: string; description: string; prizeDescription: string }[] }>('/api/competition-examples');
   return <section className="showcase-route events-view"><p className="showcase-eyebrow">COMPETE IN YOUR OWN COMMUNITY</p><h1>Join Events</h1>
-    <p>Browse upcoming and live competitions. Read the rules and separate standings before joining the curated Fortnite challenge.</p><DemoNotice />
+    <p>Find a competition, review the rules and take your shot. Every event has its own leaderboard.</p><EventDetails />
     <div className="event-grid"><form className="event-card" onSubmit={e => { e.preventDefault(); setQuery(search); }}><label>Search published events<input value={search} maxLength={100} onChange={e => setSearch(e.target.value)} /></label><button>Search</button></form>
     <form className="event-card" onSubmit={e => { e.preventDefault(); const parsed = eventCode(code); if (!parsed) { setError('Enter a valid event code or /events/ link.'); return; } window.history.pushState(null, '', `/events/${parsed}`); window.dispatchEvent(new PopStateEvent('popstate')); }}>
       <label>Event code or link<input value={code} maxLength={500} onChange={e => setCode(e.target.value)} /></label><button>Open event</button>{error && <p role="alert">{error}</p>}</form></div>
-    <h2>Upcoming &amp; live</h2><BusyOrError load={list} />{list.data && !list.data.events.length && <p>No matching published events yet. <a href="/host">Host a demonstration event</a>.</p>}
+    <h2>Upcoming &amp; live</h2><BusyOrError load={list} />{list.data && !list.data.events.length && <p>No matching published events yet. <a href="/host">Create the first event</a>.</p>}
     <div className="event-grid">{list.data?.events.map(event => <EventLink key={event.id} event={event} />)}</div>
-    <details className="event-examples"><summary>Fictional examples — read only, cannot join</summary><BusyOrError load={examples} />
-      {examples.data?.events.map(event => <article className="event-card" key={event.id}><b>FICTIONAL EXAMPLE</b><h3>{event.title}</h3><p>{event.organizer} — no real partnership.</p><p>{event.description}</p><p>{event.prizeDescription}</p></article>)}</details>
+    <details className="event-examples"><summary>Sample events — view only</summary><BusyOrError load={examples} />
+      {examples.data?.events.map(event => <article className="event-card" key={event.id}><b>SAMPLE EVENT</b><h3>{event.title}</h3><p>{event.organizer} — fictional organizer.</p><p>{event.description}</p><p>{event.prizeDescription}</p></article>)}</details>
   </section>;
 }
 export function PublicEvent({ code }: { code: string }) {
@@ -65,12 +66,12 @@ export function PublicEvent({ code }: { code: string }) {
   const event = load.data?.event;
   async function act(fn: () => Promise<void>) { setBusy(true); setError(''); try { await fn(); refresh(v => v + 1); } catch (error) { setError((error as Error).message); } finally { setBusy(false); } }
   return <section className="showcase-route events-view"><a href="/events">← Join Events</a><BusyOrError load={load} />{event && <>
-    <p className="showcase-eyebrow">{event.state} · EVENT {event.code}</p><h1>{event.title}</h1><p>{event.description}</p><DemoNotice />
+    <p className="showcase-eyebrow">{event.state} · EVENT {event.code}</p><h1>{event.title}</h1><p>{event.description}</p><EventDetails />
     <section className="event-card"><h2>Rules &amp; dates</h2><Dates event={event} /><p>Start inclusive, end exclusive, using server UTC. Results must arrive before the end and before the five-minute attempt expiry. Joining early is allowed.</p>
       <p>{event.attemptLimit} attempts per guest. Abandoned and expired reservations count. Curated Fortnite hillside only; uploaded clips do not create playable worlds.</p>
       <p>Server game-data score, 0–100; misses halve the score. {event.scoring.requireHit ? 'A hit is required.' : 'Eligible misses may rank.'} One shot, at least 1.5 seconds, move 3 m or turn 20°.</p>
       <p>Ties: score, {event.tieBreaker === 'score-hit-earliest-v1' ? 'hit first, ' : ''}earliest server submission, then entrant ID. Best eligible approved/clear result per entrant. Event attempts do not award global XP.</p>
-      <p><b>Prize description (demonstration only):</b> {event.prizeDescription || 'None.'}<br />{event.prizeNotice}</p><p>{event.rulesFrozen ? 'Published rules are frozen.' : 'Draft rules.'}</p></section>
+      <p><b>Prize information:</b> {event.prizeDescription || 'None.'}<br />{event.prizeNotice}</p><p>{event.rulesFrozen ? 'Published rules are frozen.' : 'Draft rules.'}</p></section>
     <EventBoard code={event.code} version={version} />
     <PlayerEntry key={event.id} event={event} version={version} busy={busy} act={act} refresh={() => refresh(v => v + 1)} onStart={async () => {
       requestId.current ??= newAttemptId();
@@ -112,14 +113,14 @@ export function HostHome() {
   const me = useRemote<{ hosting: { package: string } | null }>('/api/organizer/me', version);
   const [created, setCreated] = useState<CompetitionView>();
   return <section className="showcase-route events-view"><p className="showcase-eyebrow">YOUR COMMUNITY. YOUR CHALLENGE.</p><h1>Host an Event</h1>
-    <p>Creators, organizers and fictional sponsors can demonstrate separate competitions using our curated Fortnite hillside. Create a draft, freeze the rules by publishing, review results and see event analytics.</p><DemoNotice />
-    <p>Your guest cookie controls your own events only. Keep it: there is no cross-device recovery. No billing or real prize fulfillment is enabled.</p>
+    <p>Create a competition for your community. Set the rules, invite players and track results on your event’s own leaderboard.</p><EventDetails />
+    <p>Manage your events from this browser. Hosting is free, with no payment required.</p>
     {me.status === 401 ? <Identity onReady={() => refresh(v => v + 1)} /> : <BusyOrError load={me} />}
     {me.data && !me.data.hosting && <form className="event-card" onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { await api('/api/organizer/enroll', { package: hostingPackage, acknowledgeDemo: true }); refresh(v => v + 1); } catch (error) { setError((error as Error).message); } finally { setBusy(false); } }}>
-      <h2>Demonstration hosting package</h2><label>Package — no charge<select value={hostingPackage} onChange={e => setPackage(e.target.value)}>{HOSTING_PACKAGES.map(p => <option key={p} value={p}>{p} — demonstration, no charge</option>)}</select></label>
-      <label className="event-check"><input type="checkbox" required />I understand this is a no-charge demonstration with no real prizes, payments or payouts.</label><button disabled={busy}>Enable demonstration hosting</button></form>}
+      <h2>Choose your hosting package</h2><label>Package — free<select value={hostingPackage} onChange={e => setPackage(e.target.value)}>{HOSTING_PACKAGES.map(p => <option key={p} value={p}>{packageLabel(p)}</option>)}</select></label>
+      <label className="event-check"><input type="checkbox" required />I understand hosting and entry are free, and no real prizes, payments or payouts are enabled.</label><button disabled={busy}>Start hosting</button></form>}
     {error && <p role="alert">{error}</p>}
-    {me.data?.hosting && <><p>Hosting enabled: {me.data.hosting.package} · no charge.</p><OwnedList version={version} />
+    {me.data?.hosting && <><p>Your hosting package: {packageLabel(me.data.hosting.package)} · free.</p><OwnedList version={version} />
       {created ? <p role="status">Draft created: <a href={`/host/events/${created.id}`}>Manage {created.title} ↗</a></p> : <RulesForm onSaved={event => { setCreated(event); refresh(v => v + 1); }} />}</>}
   </section>;
 }
@@ -129,7 +130,7 @@ function OwnedList({ version }: { version: number }) {
 }
 const defaultRules = (): CompetitionRules => ({ title: '', description: '', challengeTemplate: 'fortnite-hillside-v1',
   startsAt: new Date(Math.floor(Date.now() / 60000) * 60000).toISOString(), endsAt: new Date(Math.floor(Date.now() / 60000) * 60000 + 3600000).toISOString(),
-  attemptLimit: 3, scoring: { method: 'server-game-data-v1', requireHit: false }, tieBreaker: 'score-earliest-v1', prizeDescription: 'Demonstration only. No real prize.' });
+  attemptLimit: 3, scoring: { method: 'server-game-data-v1', requireHit: false }, tieBreaker: 'score-earliest-v1', prizeDescription: 'Recognition on the event leaderboard. No real prize.' });
 function RulesForm({ event, onSaved }: { event?: CompetitionView; onSaved: (event: CompetitionView) => void }) {
   const [rules, setRules] = useState<CompetitionRules>(() => event ? Object.fromEntries(Object.keys(defaultRules()).map(k => [k, event[k as keyof CompetitionRules]])) as CompetitionRules : defaultRules());
   const [busy, setBusy] = useState(false), [error, setError] = useState(''); const id = useRef(newAttemptId());
@@ -155,7 +156,7 @@ function RulesForm({ event, onSaved }: { event?: CompetitionView; onSaved: (even
 export function HostManager({ id }: { id: string }) {
   const [version, refresh] = useState(0);
   const load = useRemote<EventEnvelope>(`/api/organizer/events/${encodeURIComponent(id)}`, version);
-  return <section className="showcase-route events-view"><a href="/host">← Host an Event</a><h1>Manage your event</h1><DemoNotice /><BusyOrError load={load} />
+  return <section className="showcase-route events-view"><a href="/host">← Host an Event</a><h1>Manage your event</h1><EventDetails /><BusyOrError load={load} />
     {load.status === 401 && <Identity onReady={() => refresh(v => v + 1)} />}
     {load.data && <OwnedDetails key={`${id}:${load.data.event.version}`} event={load.data.event} version={version} refresh={() => refresh(v => v + 1)} />}</section>;
 }
@@ -174,7 +175,7 @@ function OwnedDetails({ event, version, refresh }: { event: CompetitionView; ver
     <div className="event-card"><h2>Publication &amp; entry control</h2><p>Publishing permanently freezes all rules. Closing rejects new entries and unfinished attempts. Finalization freezes rankings and analytics.</p>
       {event.state === 'draft' && <button disabled={busy} onClick={() => void transition('publish')}>Publish and freeze rules</button>}
       {event.state === 'published' && <button disabled={busy} onClick={() => void transition('close')}>Close entries</button>}
-      {event.state === 'closed' && <><label className="event-check"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />I reviewed all results and exclusions. Finalize this demonstration event.</label><button disabled={busy || !ack || !!analytics.data?.analytics.pendingReview} onClick={() => void transition('finalize')}>Finalize standings</button></>}
+      {event.state === 'closed' && <><label className="event-check"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />I reviewed all results and exclusions. Finalize this event.</label><button disabled={busy || !ack || !!analytics.data?.analytics.pendingReview} onClick={() => void transition('finalize')}>Finalize standings</button></>}
       {error && <p role="alert">{error}</p>}</div>
     <section className="event-card"><h2>Event analytics</h2><BusyOrError load={analytics} />{analytics.data && <><dl className="event-metrics">{Object.entries(analytics.data.analytics).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{key === 'completionRate' ? `${(value * 100).toFixed(1)}%` : value}</dd></div>)}</dl><details><summary>Metric definitions</summary>{Object.entries(analytics.data.definitions).map(([key, value]) => <p key={key}><b>{key}:</b> {value}</p>)}</details></>}</section>
     <section className="event-card"><h2>Review results</h2><p>Pending and excluded entries do not rank. Approving cannot override rule ineligibility. Every moderation action requires a reason and is audited.</p><BusyOrError load={results} />{results.data?.results.map(result => <ReviewResult key={`${result.resultId}:${result.review}`} event={event} result={result} onSaved={refresh} />)}{results.data?.results.length === 0 && <p>No submitted results yet.</p>}</section>

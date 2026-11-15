@@ -1,7 +1,7 @@
 /** Phase-1 competition contract. No browser, database or environment side effects. */
 export const COMPETITION_TEMPLATE = 'fortnite-hillside-v1' as const;
 export const COMPETITION_CHALLENGE_VERSION = 'hillside-2026-11-15-v1' as const;
-export const HOSTING_NOTICE = 'Demonstration only — no charge, entry fees, real prizes, payment collection or payouts.';
+export const HOSTING_NOTICE = 'Hosting and entry are free — no charge. Real prizes, payment collection and payouts are not enabled.';
 export const HOSTING_PACKAGES = ['community-demo', 'creator-demo', 'sponsor-demo'] as const;
 export type HostingPackage = typeof HOSTING_PACKAGES[number];
 export type CompetitionState = 'draft' | 'published' | 'closed' | 'finalized';

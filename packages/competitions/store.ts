@@ -134,7 +134,7 @@ export function openCompetitionStore(options: { databasePath?: string; now?: () 
     create(actor: string, key: string, r: CompetitionRules) {
       identifier(key);
       return tx(() => {
-        if (!get('SELECT player_id FROM competition_organizers WHERE player_id=?', actor)) reject(403, 'Enable demonstration hosting for this signed-in browser first.');
+        if (!get('SELECT player_id FROM competition_organizers WHERE player_id=?', actor)) reject(403, 'Enable hosting for this signed-in browser first.');
         const serialized = JSON.stringify(r), digest = hash(serialized);
         const previous = get<EventRow>('SELECT * FROM competition_events WHERE owner_id=? AND creation_key=?', actor, key);
         if (previous) { if (previous.creation_hash !== digest) reject(409, 'Request id was already used with different rules.'); return view(previous); }
