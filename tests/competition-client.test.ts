@@ -31,6 +31,6 @@ test('event scoring sends only actual telemetry and owned ticket headers, never 
     await submitScore(telemetry, new Blob(['ordinary game clip'], { type: 'video/webm' }), 'yes', undefined, 'global-attempt');
     assert.equal((sent!.headers as Record<string, string>)['x-score-ai'], 'yes');
     assert.equal((sent!.headers as Record<string, string>)['x-competition-id'], undefined);
-    assert.ok(sent!.body instanceof Blob);
+    assert.ok((sent as RequestInit).body instanceof Blob);
   } finally { globalThis.fetch = original; }
 });
