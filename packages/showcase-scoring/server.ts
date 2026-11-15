@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
-import { rayHitsTarget, standingOnBuild, targetBase } from '../gameplay/hillsideScene';
+import { airborneOffBuild, rayHitsTarget, standingOnBuild, targetBase } from '../gameplay/hillsideScene';
 import { judgeAttempt, type GeminiOutcome } from './gemini';
 import { blendScore, parseTelemetry, scoreTelemetry, type TelemetryParts } from './telemetry';
 
@@ -91,7 +91,8 @@ export function registerShowcaseScoring(app: Express, options: Options = {}) {
     const hit = telemetry.shots === 1 && nearShooter && rayHitsTarget(origin, new THREE.Vector3(...ray.direction));
     const derived = {
       hit,
-      onStructure: shooter.grounded && standingOnBuild(shooter.x, shooter.z, shooter.y),
+      // On the build, or in the air just off it (the clip's jump shot).
+      onStructure: shooter.grounded ? standingOnBuild(shooter.x, shooter.z, shooter.y) : airborneOffBuild(shooter.x, shooter.z, shooter.y),
       distanceM: Math.round(Math.hypot(targetBase.x - shooter.x, targetBase.z - shooter.z) * 10) / 10,
     };
     const parts = scoreTelemetry(telemetry, derived);

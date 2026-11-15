@@ -348,3 +348,19 @@ test('a target you can see is a target you can hit: shot occlusion matches the r
   }
   assert.ok(checked > 200, `enough clear sight lines sampled (${checked})`);
 });
+
+test('the hit zone is forgiving at 61 m but a clear miss still misses', async () => {
+  const { HIT_RADIUS, HIT_HEIGHT, airborneOffBuild, SHOT_SPOT, standingOnBuild } = await import('../packages/gameplay/hillsideScene');
+  assert.ok(HIT_RADIUS >= .9 && HIT_HEIGHT >= 2.3, 'hit zone larger than the 0.42 m visible dummy');
+  const eye = new THREE.Vector3(SHOT_SPOT.x, LANDING + 1.84 + 2.4, SHOT_SPOT.z);
+  const chest = targetBase.clone().add(new THREE.Vector3(0, 1.1, 0));
+  const side = new THREE.Vector3(-(chest.z - eye.z), 0, chest.x - eye.x).normalize();
+  // About 0.7 m to the side of the dummy: previously a miss, now counts.
+  assert.equal(rayHitsTarget(eye, chest.clone().addScaledVector(side, .7).sub(eye)), true);
+  // Two metres off is still a miss.
+  assert.equal(rayHitsTarget(eye, chest.clone().addScaledVector(side, 2).sub(eye)), false);
+  // A jump shot just off the build gets build credit; a jump far away does not.
+  assert.equal(airborneOffBuild(SHOT_SPOT.x, SHOT_SPOT.z, LANDING + 3), true);
+  assert.equal(airborneOffBuild(targetBase.x, targetBase.z, targetBase.y + 2), false);
+  assert.equal(standingOnBuild(SHOT_SPOT.x, SHOT_SPOT.z, LANDING + 1.84), true);
+});

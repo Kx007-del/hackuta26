@@ -78,6 +78,11 @@ export const spawnHeight = RAMP_TOP;
 /** Where the clip's shot is fired from: on the landing, at the cone. The target is 61 m from here. */
 export const SHOT_SPOT = { x: rampForward.x * CONE_CENTER, z: rampForward.y * CONE_CENTER };
 
+/** True for a jump shot taken in the air close to the build, as in the clip (jump off the landing, then shoot). */
+export function airborneOffBuild(x: number, z: number, y: number) {
+  return Math.hypot(x - SHOT_SPOT.x, z - SHOT_SPOT.z) <= 14 && y > terrainHeight(x, z) + .3;
+}
+
 /** True when a player at (x, y, z) is standing on the wooden build (platform, ramp, landing or cone). */
 export function standingOnBuild(x: number, z: number, y: number) {
   const deck = deckHeight(x, z, PLAYER_RADIUS);
@@ -228,6 +233,12 @@ export function stepPlayer(state: PlayerState, input: PlayerInput, dt: number): 
 // ---- Target -----------------------------------------------------------------
 export const TARGET_HEIGHT = 1.9;
 export const TARGET_RADIUS = .42;
+/**
+ * The hit zone is more forgiving than the visible dummy: at 61 m the dummy is under 1° wide,
+ * a few pixels of mouse travel, which made nearly every hip-fire shot a miss.
+ */
+export const HIT_RADIUS = .95;
+export const HIT_HEIGHT = 2.4;
 export const targetBase = (() => {
   // 61 m horizontally from the shooting spot on the landing, at the reference bearing (~200°).
   const x = SHOT_SPOT.x + ridgeForward.x * RIDGE_DISTANCE, z = SHOT_SPOT.z + ridgeForward.y * RIDGE_DISTANCE;
@@ -272,7 +283,7 @@ export function rayHitsTarget(origin: THREE.Vector3, direction: THREE.Vector3, b
   const a = d.x * d.x + d.z * d.z;
   if (a < 1e-9) return false;
   const b = 2 * (ox * d.x + oz * d.z);
-  const c = ox * ox + oz * oz - TARGET_RADIUS ** 2;
+  const c = ox * ox + oz * oz - HIT_RADIUS ** 2;
   const disc = b * b - 4 * a * c;
   if (disc < 0) return false;
   const root = Math.sqrt(disc);
@@ -280,10 +291,10 @@ export function rayHitsTarget(origin: THREE.Vector3, direction: THREE.Vector3, b
   for (const t of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
     if (t < 0) continue;
     const y = origin.y + d.y * t;
-    if (y >= base.y && y <= base.y + TARGET_HEIGHT) { hitAt = t; break; }
+    if (y >= base.y && y <= base.y + HIT_HEIGHT) { hitAt = t; break; }
   }
   if (hitAt === undefined) return false;
-  for (let t = .25; t < hitAt - TARGET_RADIUS; t += .25) {
+  for (let t = .25; t < hitAt - HIT_RADIUS; t += .25) {
     if (blocksShot(origin.x + d.x * t, origin.y + d.y * t, origin.z + d.z * t)) return false;
   }
   return true;

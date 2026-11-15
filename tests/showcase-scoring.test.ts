@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import * as THREE from 'three';
 import { RAMP_HEADING, RIDGE_HEADING, SHOT_SPOT, rayHitsTarget, standingOnBuild, targetBase, terrainHeight } from '../packages/gameplay/hillsideScene';
-import { REFERENCE, blendScore, falloff, MISS_CAP, parseTelemetry, scoreTelemetry, signedTurnDeg, type AttemptTelemetry } from '../packages/showcase-scoring/telemetry';
+import { REFERENCE, blendScore, falloff, MISS_FACTOR, parseTelemetry, scoreTelemetry, signedTurnDeg, type AttemptTelemetry } from '../packages/showcase-scoring/telemetry';
 import { buildRequestBody, DEFAULT_GEMINI_MODEL, judgeAttempt, parseJudgement, type GeminiOutcome } from '../packages/showcase-scoring/gemini';
 import { MAX_CLIP_BYTES, registerShowcaseScoring, type ScoreResponse } from '../packages/showcase-scoring/server';
 
@@ -85,14 +85,16 @@ test('telemetry: a perfect recreation scores ≥ 90; clearly wrong runs score lo
   const perfect = scoreTelemetry(telemetry(), perfectDerived).score;
   assert.ok(ads.score < 90 && twoShots.score < 90 && noHold.score < perfect, 'each deviation costs points');
   assert.ok(tooClose.score <= 60, `too close / off the build ${tooClose.score}`);
-  assert.ok(miss.score <= MISS_CAP, `miss ${miss.score}`);
+  assert.equal(miss.score, perfect, 'game data shows the run itself; the miss penalty is applied in the blend');
   assert.ok(wrongWay.score < scoreTelemetry(telemetry({ shotHeading: RAMP_HEADING - 50 * DEG }), perfectDerived).score, 'closer turn scores higher');
 });
 
-test('blend: 60 % AI + 40 % game data; game data alone when AI is unavailable; a miss is capped', () => {
+test('blend: 60 % AI + 40 % game data; game data alone when AI is unavailable; a miss is halved', () => {
   assert.equal(blendScore(80, 100, true), 92);
   assert.equal(blendScore(80, null, true), 80);
-  assert.equal(blendScore(80, 100, false), MISS_CAP);
+  assert.equal(blendScore(80, 100, false), Math.round(92 * MISS_FACTOR));
+  assert.equal(blendScore(70, 97, false), 43, 'a near-perfect AI comparison still shows on a miss');
+  assert.ok(blendScore(60, 60, true) > blendScore(100, 100, false), 'a mediocre hit beats a perfect miss');
 });
 
 test('parseTelemetry accepts a well-formed attempt and rejects malformed input', () => {
@@ -201,7 +203,7 @@ test('endpoint: game-data-only when the player declines; server recomputes the h
     const lie = telemetry({ hit: true, ray: { origin: telemetry().ray.origin, direction: [0, 1, 0] } });
     const lied = await (await score(base, lie, undefined, false)).json() as ScoreResponse;
     assert.equal(lied.hit, false);
-    assert.ok(lied.score <= MISS_CAP);
+    assert.ok(lied.score <= Math.round(lied.telemetry.score * MISS_FACTOR));
     // A ray fired from far away from the shooter is not trusted either.
     const far = telemetry({ ray: { origin: [targetBase.x + 2, targetBase.y + 1.1, targetBase.z + 2], direction: [-1, 0, -1] } });
     assert.equal(((await (await score(base, far, undefined, false)).json()) as ScoreResponse).hit, false);
