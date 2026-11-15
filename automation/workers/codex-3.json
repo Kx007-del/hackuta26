@@ -2,9 +2,15 @@
   "role": "codex-3",
   "lease": {
     "session": "a71833f5-20db-4630-bdae-7325b3b559bb",
-    "at": "2026-11-15T01:09:58.423Z",
+    "at": "2026-11-15T01:09:59.887Z",
     "machine": "HpPavilion"
   },
   "status": "working",
-  "results": {}
+  "results": {
+    "0017aefd-20d2-449e-b102-54f73fe4f8ed": {
+      "status": "running",
+      "startedAt": "2026-11-15T01:09:59.486Z",
+      "baseSha": "411ce3c1bf5f138ab97fd14356eb0a7561daf687"
+    }
+  }
 }
