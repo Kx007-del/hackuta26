@@ -63,7 +63,8 @@ function ArenaArtwork() {
       <circle cx="522" cy="218" r="5" fill="#e4002b" />
       <path d="M310 191h40m-20-20v40" stroke="white" opacity=".6" />
       <path d="M160 377l20-30 38 8-20 30z" fill="#d10028" />
-      <text x="50" y="65" fill="#c2bec3" fontSize="11" fontFamily="Source">
+      {/* Right-aligned so the .arena-stamp headline (top-left overlay) never covers it. */}
+      <text x="660" y="65" textAnchor="end" fill="#c2bec3" fontSize="11" fontFamily="Source">
         35° 42′ N / ROOFTOP TRAINING FACILITY
       </text>
       <text x="50" y="438" fill="white" fontSize="12" fontFamily="Source">
@@ -90,7 +91,10 @@ export default function App() {
   const [boardVersion, setBoardVersion] = useState(0);
   const [boardStatus, setBoardStatus] = useState('');
   const [error, setError] = useState('');
+  const [nameError, setNameError] = useState('');
   const [notice, setNotice] = useState('');
+  const nameInput = useRef<HTMLInputElement>(null);
+  const playColumn = useRef<HTMLElement>(null);
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
   const [arenaKey, setArenaKey] = useState(0);
   const [sourceRelay, setSourceRelay] = useState<string | undefined>();
@@ -258,6 +262,13 @@ export default function App() {
     setError(cause instanceof Error ? cause.message : 'The request failed. Please try again.');
   }
 
+  /** Show the missing-name error beside the field (not at the top of the page) and move focus there. */
+  function requireName(message: string) {
+    setNameError(message);
+    nameInput.current?.focus();
+    nameInput.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
   function postToLeaderboard(result: AttemptResult) {
     const player = name.trim();
     if (!boardOptIn || !player) return;
@@ -281,7 +292,7 @@ export default function App() {
   async function publish() {
     if (screen !== 'arena' || clipBusy || activeRequest.current !== null || !attempt || !proven) return;
     if (!name.trim()) {
-      setError('Add your player name before passing the shot.');
+      requireName('Add your player name before passing the shot.');
       return;
     }
     const token = startRequest();
@@ -312,7 +323,7 @@ export default function App() {
   async function finishRelay() {
     if (!guest || activeRequest.current !== null || !relay || !attempt || !proven) return;
     if (!name.trim()) {
-      setError('Add your player name to join the premiere.');
+      requireName('Add your player name to join the premiere.');
       return;
     }
     const token = startRequest();
@@ -722,7 +733,7 @@ export default function App() {
             </>
           ) : (
             <div className="play-layout">
-              <section className="play-column">
+              <section className="play-column" ref={playColumn}>
                 <div className="arena-topbar">
                   <span>
                     <i /> {replayAttempt ? "TEAMMATE REPLAY" : "LIVE PRACTICE"}
@@ -772,9 +783,12 @@ export default function App() {
                     </div>
                     <button
                       className="secondary"
-                      onClick={() =>
-                        setReplayIndex(replayIndex === 0 ? null : 0)
-                      }
+                      onClick={() => {
+                        const watching = replayIndex !== 0;
+                        setReplayIndex(watching ? 0 : null);
+                        // The arena sits above this card; bring the replay into view.
+                        if (watching) playColumn.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                      }}
                     >
                       {replayIndex === 0 ? "BACK TO PLAY" : "WATCH THEIR SHOT"}
                     </button>
@@ -788,17 +802,26 @@ export default function App() {
                   onChange={changeConfig}
                   proven={proven}
                   locked={guest || !!relay}
+                  viewer={guest ? 'guest' : 'host'}
                 />
                 <section className="share-panel">
                   <label htmlFor="player-name">YOUR PLAYER NAME</label>
                   <input
                     id="player-name"
+                    ref={nameInput}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => { setName(e.target.value); if (e.target.value.trim()) setNameError(''); }}
                     maxLength={24}
                     placeholder="What does your squad call you?"
                     autoComplete="nickname"
+                    aria-invalid={nameError ? true : undefined}
+                    aria-describedby={nameError ? 'player-name-error' : undefined}
                   />
+                  {nameError && (
+                    <p id="player-name-error" className="field-error" role="alert">
+                      {nameError}
+                    </p>
+                  )}
                   <label className="board-opt-in">
                     <input
                       type="checkbox"
@@ -847,10 +870,14 @@ export default function App() {
                   )}
                   <p className="fine-print">
                     {guest
-                      ? "Land your teammate’s exact challenge to unlock your premiere."
+                      ? proven
+                        ? "Shot landed. Add your name and finish the relay to unlock your premiere."
+                        : "Land your teammate’s exact challenge to unlock your premiere."
                       : relay
                         ? "The shot is locked. Your teammate plays the same setup."
-                        : "Complete this setup to unlock your squad invitation."}
+                        : proven
+                          ? "Shot proven. Add your name and pass the play to get your invite link."
+                          : "Complete this setup to unlock your squad invitation."}
                   </p>
                 </section>
                 <Leaderboard refreshKey={boardVersion} arenaId={config.arenaId} compact />
