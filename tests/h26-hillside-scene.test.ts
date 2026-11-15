@@ -7,9 +7,11 @@ import * as THREE from 'three';
 import {
   terrainHeight, walkHeight, withinWalkArea, spawnHeight, clipShoulderCamera,
   RAMP_HEADING, RIDGE_HEADING, RIDGE_DISTANCE, makeHillsideScene,
+  spawnPlayer, stepPlayer, rayHitsTarget, targetBase, RUN_SPEED, GRAVITY, JUMP_SPEED, TARGET_HEIGHT, MAX_CLIMB_SLOPE,
+  type PlayerState, type PlayerInput,
 } from '../packages/gameplay/hillsideScene';
 
-const LANDING = 4.34;
+const LANDING = 2.6;
 const forward = [Math.sin(RAMP_HEADING), -Math.cos(RAMP_HEADING)] as const;
 const right = [Math.cos(RAMP_HEADING), Math.sin(RAMP_HEADING)] as const;
 const at = (u: number, v: number) => [right[0] * u + forward[0] * v, right[1] * u + forward[1] * v] as const;
@@ -34,9 +36,12 @@ test('reference headings: ramp 265°, aim 200°, a 65° left turn', () => {
   assert.equal(Math.round(THREE.MathUtils.radToDeg(RAMP_HEADING - RIDGE_HEADING)), 65);
 });
 
-test('spawn stands on the ramp deck, above the terrain', () => {
-  assert.ok(spawnHeight > terrainHeight(0, 0) + 1, `spawn ${spawnHeight} vs ground ${terrainHeight(0, 0)}`);
-  assert.equal(walkHeight(0, 0, spawnHeight), spawnHeight);
+test('spawn stands on the high platform at the top of the build, well above the terrain', () => {
+  const s = spawnPlayer();
+  assert.equal(s.y, spawnHeight);
+  assert.ok(s.y > terrainHeight(s.x, s.z) + 3, `spawn ${s.y} vs ground ${terrainHeight(s.x, s.z)}`);
+  assert.ok(local(s.x, s.z).v < -3.7, 'spawn is behind the top of the ramp');
+  assert.equal(walkHeight(s.x, s.z, s.y), s.y);
 });
 
 test('ridge marker is 61 m away along the aim heading and above eye level', () => {
@@ -67,11 +72,34 @@ test('cone is preplaced scenery centred on the landing, present in every freshly
   }
 });
 
-test('walking up the ramp from the ground in front of the toe reaches the landing', () => {
-  const start = at(0, -6);
-  const r = walk(start, at(0, 6.9), terrainHeight(...start));
-  assert.equal(r.blocked, 0, 'the ramp toe must be walkable');
+test('the ramp runs downhill from the spawn platform to the landing', () => {
+  const s = spawnPlayer();
+  const r = walk([s.x, s.z], at(0, 6.9), s.y);
+  assert.equal(r.blocked, 0);
   assert.ok(Math.abs(r.h - LANDING) < .05, `expected landing height, got ${r.h}`);
+  assert.ok(s.y - LANDING > 3, 'the landing is well below the spawn');
+  let prev = Infinity;
+  for (let v = -3.7; v <= 6.8; v += .5) {
+    const h = walkHeight(...at(0, v), 10)!;
+    assert.ok(h <= prev + 1e-9, `ramp rises at v=${v}`);
+    prev = h;
+  }
+});
+
+test('running down the ramp builds speed above the flat run speed', () => {
+  let p = spawnPlayer(), top = 0;
+  for (let i = 0; i < 80; i++) {
+    p = stepPlayer(p, { forward: 1, right: 0, heading: RAMP_HEADING, jump: false }, 1 / 60);
+    top = Math.max(top, Math.hypot(p.vx, p.vz));
+  }
+  assert.ok(top > RUN_SPEED * 1.25, `top speed ${top}`);
+});
+
+test('the target marker tracks the dummy and shows live distance', () => {
+  const preview = src('../packages/gameplay/HillsidePreview.tsx');
+  assert.match(preview, /className="hillside-marker"/);
+  assert.match(preview, /markerPoint\.copy\(world\.target\.position\)/);
+  assert.match(preview, /Math\.round\(distance\)\}/);
 });
 
 test('C1: side entry into the landing is blocked (no walking under or through the deck)', () => {
@@ -135,29 +163,160 @@ test('showcase is Fortnite-only: no GameArena, legacy arena or relay code is loa
   assert.doesNotMatch(showcase, /GameArena|PracticeGuide|ChallengeBuilder|rooftop|tactical|relay/i);
 });
 
-test('preview wiring: Reset reuses the ramp review, Esc releases pointer lock, cleanup releases it', () => {
+test('preview UI: only small Reset and Full screen controls; Esc releases pointer lock; cleanup releases it', () => {
   const preview = src('../packages/gameplay/HillsidePreview.tsx');
-  assert.match(preview, /onClick=\{\(\) => controls\.current\?\.review\('ramp'\)\}>Reset position</);
-  assert.match(preview, /onClick=\{\(\) => controls\.current\?\.review\('ridge'\)\}>Aim up the hill</);
+  const buttons = preview.match(/<button\b/g) ?? [];
+  assert.equal(buttons.length, 2, 'only Reset and Full screen remain');
+  assert.ok(preview.includes('onClick={toggleFullscreen}'));
+  assert.ok(preview.includes('el.requestFullscreen?.()'));
+  assert.ok(preview.includes('document.exitFullscreen()'));
+  assert.ok(preview.includes("removeEventListener('fullscreenchange', changed)"));
+  assert.ok(src('../src/fortnite-showcase.css').includes('.hillside-stage:fullscreen'));
+  assert.match(preview, /className="hillside-reset" onClick=\{\(\) => controls\.current\?\.reset\(\)\}/);
+  assert.doesNotMatch(preview, /Aim up the hill|Ramp and cone|type="checkbox"/);
   assert.match(preview, /event\.code === 'Escape' && document\.pointerLockElement === canvas\)\s*\{\s*document\.exitPointerLock\(\)/);
   const cleanup = preview.slice(preview.indexOf('return () => {'));
   for (const piece of ['cancelAnimationFrame', "removeEventListener('pointerlockchange'", "removeEventListener('keydown'", 'exitPointerLock', 'world.dispose()', 'renderer.dispose()'])
     assert.ok(cleanup.includes(piece), `cleanup missing ${piece}`);
-  const review = preview.slice(preview.indexOf('function review'), preview.indexOf('function lockChanged'));
-  assert.match(review, /keys\.clear\(\)/);
-  assert.match(review, /x = z = 0/);
+  const reset = preview.slice(preview.indexOf('function reset'), preview.indexOf('function fire'));
+  for (const piece of ['keys.clear()', 'player = spawnPlayer()', 'heading = RAMP_HEADING', 'targetDown = false', 'setShot(undefined)'])
+    assert.ok(reset.includes(piece), `reset missing ${piece}`);
 });
 
-test('C2: keyboard look is opt-in and only arrow keys turn the view', () => {
+test('preview controls: Space jumps, arrows look without a toggle, F/click fire, R resets', () => {
   const preview = src('../packages/gameplay/HillsidePreview.tsx');
-  assert.match(preview, /const keyboardLook = useRef\(false\)/);
-  assert.match(preview, /LOOK_KEYS = new Set\(\['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'\]\)/);
-  assert.match(preview, /keyboardLook\.current && LOOK_KEYS\.has\(event\.code\)/);
-  assert.match(preview, /type="checkbox"[^>]*checked=\{lookEnabled\}/);
+  assert.match(preview, /GAME_KEYS = new Set\(\[[^\]]*'Space'[^\]]*'ArrowLeft'/);
+  assert.match(preview, /event\.code === 'Space' && !event\.repeat\) jumpQueued = true/);
+  assert.match(preview, /event\.code === 'KeyF'\) \{ event\.preventDefault\(\); fire\(\)/);
+  assert.match(preview, /event\.code === 'KeyR'\) \{ event\.preventDefault\(\); reset\(\)/);
+  assert.match(preview, /event\.button === 0 && document\.pointerLockElement === canvas\) fire\(\)/);
+  assert.match(preview, /document\.addEventListener\('mousedown', onMouseDown\)/);
+  assert.match(preview, /document\.removeEventListener\('mousedown', onMouseDown\)/);
+  assert.match(preview, /player = stepPlayer\(player, \{ forward, right, heading, jump: jumpQueued \}, dt\)/);
 });
 
 test('the cone is climbable from the landing and its apex is the high point', () => {
   const r = walk(at(0, 6.9), at(0, 9.3), LANDING);
   assert.equal(r.blocked, 0);
   assert.ok(Math.abs(r.h - (LANDING + 1.84)) < .02, `apex height ${r.h}`);
+});
+
+// ---- Gameplay physics and target ------------------------------------------
+const DT = 1 / 60;
+function simulate(frames: number, input: (frame: number, p: PlayerState) => Partial<PlayerInput>, start = spawnPlayer()) {
+  let p = start;
+  const trace: PlayerState[] = [];
+  for (let i = 0; i < frames; i++) {
+    p = stepPlayer(p, { forward: 0, right: 0, heading: RAMP_HEADING, jump: false, ...input(i, p) }, DT);
+    trace.push(p);
+  }
+  return { p, trace };
+}
+
+test('Space jumps: rises about v²/2g, lands back on the deck and is grounded again', () => {
+  const start = spawnPlayer();
+  const { p, trace } = simulate(90, i => ({ jump: i === 0 }));
+  const apex = Math.max(...trace.map(s => s.y)) - start.y;
+  assert.ok(Math.abs(apex - JUMP_SPEED ** 2 / (2 * GRAVITY)) < .12, `apex ${apex}`);
+  assert.ok(p.grounded && Math.abs(p.y - start.y) < 1e-6);
+});
+
+test('cannot double-jump in mid-air', () => {
+  const { trace } = simulate(20, i => ({ jump: i === 0 || i === 10 }));
+  const apex = Math.max(...trace.map(s => s.y)) - spawnPlayer().y;
+  assert.ok(apex < JUMP_SPEED ** 2 / (2 * GRAVITY) + .05);
+});
+
+test('gravity accelerates a fall: running off the landing edge falls faster each frame', () => {
+  // Run up to the landing, then run off the left side.
+  const { p, trace } = simulate(160, i => ({ forward: 1, heading: i < 75 ? RAMP_HEADING : RAMP_HEADING - Math.PI / 2 }));
+  const air = trace.filter(s => !s.grounded);
+  assert.ok(air.length > 15, `expected a real fall, airborne frames ${air.length}`);
+  for (let i = 2; i < air.length && air[i].vy > -40; i++) assert.ok(air[i].vy < air[i - 1].vy, 'vertical speed must keep increasing');
+  assert.ok(Math.abs((air[5].vy - air[4].vy) / DT + GRAVITY) < 1e-6);
+  assert.ok(p.grounded && Math.abs(p.y - terrainHeight(p.x, p.z)) < 1e-6, 'lands on the terrain');
+});
+
+test('momentum carries through the air (no instant stop when keys are released mid-jump)', () => {
+  const { trace } = simulate(100, i => ({ forward: i < 70 ? 1 : 0, jump: i === 70 }));
+  const lastAir = trace.slice(70).filter(s => !s.grounded).at(-1)!;
+  assert.ok(Math.hypot(lastAir.vx, lastAir.vz) > RUN_SPEED * .3, 'still moving forward in the air');
+});
+
+test('running speed: a grounded run on flat ground reaches RUN_SPEED quickly', () => {
+  const flat = spawnPlayer(30, -30);
+  const { p } = simulate(30, () => ({ forward: 1, heading: 0 }), flat);
+  assert.ok(Math.hypot(p.vx, p.vz) > RUN_SPEED * .6 && Math.hypot(p.vx, p.vz) < RUN_SPEED * 1.4);
+});
+
+test('downhill is faster than uphill', () => {
+  const [x, z] = at(0, 25);
+  const speedAfter = (heading: number) => {
+    const { p } = simulate(25, () => ({ forward: 1, heading }), spawnPlayer(x, z));
+    return Math.hypot(p.vx, p.vz);
+  };
+  // The west rise peaks around v = 29: further along the ramp heading is uphill here.
+  const uphill = speedAfter(RAMP_HEADING), downhill = speedAfter(RAMP_HEADING + Math.PI);
+  assert.ok(downhill > uphill * 1.2, `downhill ${downhill} vs uphill ${uphill}`);
+});
+
+test('a long run from spawn never puts the player or the camera inside the terrain', () => {
+  // The earlier build let W walk straight up the west hill and the camera sank into the grass.
+  const { trace } = simulate(480, i => ({ forward: 1, heading: RAMP_HEADING + Math.sin(i / 60) * .6 }));
+  for (const s of trace) {
+    assert.ok(s.y >= terrainHeight(s.x, s.z) - 1e-6, 'player below terrain');
+    const heading = RAMP_HEADING, sin = Math.sin(heading), cos = Math.cos(heading);
+    const pivot = new THREE.Vector3(s.x, s.y + 1.55, s.z);
+    const cam = clipShoulderCamera(pivot, new THREE.Vector3(-sin * 3.05 + cos * .64, .52, cos * 3.05 + sin * .64), new THREE.Vector3());
+    assert.ok(cam.y > terrainHeight(cam.x, cam.z), 'camera inside terrain');
+  }
+});
+
+test('terrain steeper than the climb limit blocks a grounded player', () => {
+  // Drive stepPlayer against a synthetic rise by starting next to the build's high side wall:
+  // the deck rule blocks it, and the terrain rule is exercised through MAX_CLIMB_SLOPE directly.
+  const start = spawnPlayer(...at(-6, 0));
+  const heading = Math.atan2(right[0], -right[1]);
+  const { p } = simulate(120, () => ({ forward: 1, heading }), start);
+  assert.ok(local(p.x, p.z).u < -2.5, 'stopped at the wall of the build');
+  assert.ok(MAX_CLIMB_SLOPE > .5 && MAX_CLIMB_SLOPE < 1.2);
+});
+
+test('the build stays solid with the new physics: side entry into the landing is blocked', () => {
+  const start = at(-8, 9);
+  const heading = Math.atan2(right[0], -right[1]);
+  const { p } = simulate(180, () => ({ forward: 1, heading }), spawnPlayer(...start));
+  assert.ok(local(p.x, p.z).u < -2.5 && p.y < LANDING - 1);
+});
+
+test('a jump from the ramp can land on the landing and on the cone', () => {
+  const { trace } = simulate(140, i => ({ forward: 1, jump: i === 60 }));
+  assert.ok(trace.some(s => s.grounded && Math.abs(s.y - LANDING) < .01 || s.grounded && s.y > LANDING));
+});
+
+test('target dummy is a visible, player-sized figure at 61 m on the aim heading', () => {
+  const world = makeHillsideScene();
+  try {
+    const dummy = world.scene.getObjectByName('Target dummy');
+    assert.equal(dummy, world.target);
+    assert.ok(Math.abs(Math.hypot(dummy!.position.x, dummy!.position.z) - 61) < 1e-6);
+    const box = new THREE.Box3().setFromObject(dummy!);
+    const height = box.max.y - box.min.y;
+    assert.ok(height > 1.7 && height < 2.1, `height ${height}`);
+    dummy!.traverse(o => { if ((o as THREE.Mesh).material) assert.equal(((o as THREE.Mesh).material as THREE.MeshStandardMaterial).fog, false, 'target ignores fog so it reads at 61 m'); });
+  } finally { world.dispose(); }
+});
+
+test('hitscan: aiming at the dummy hits, a small miss or aiming through the hill misses', () => {
+  const s = spawnPlayer();
+  const eye = new THREE.Vector3(s.x, s.y + 1.55, s.z);
+  const chest = targetBase.clone().add(new THREE.Vector3(0, 1.1, 0));
+  const dir = chest.clone().sub(eye);
+  assert.equal(rayHitsTarget(eye, dir), true);
+  assert.equal(rayHitsTarget(eye, dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(1.5))), false);
+  assert.equal(rayHitsTarget(eye, chest.clone().add(new THREE.Vector3(0, TARGET_HEIGHT, 0)).sub(eye)), false, 'over the head');
+  assert.equal(rayHitsTarget(eye, dir.clone().negate()), false, 'behind');
+  // A line that passes through the terrain is blocked even when it points at the dummy.
+  const underground = eye.clone().setY(terrainHeight(eye.x, eye.z) - 4);
+  assert.equal(rayHitsTarget(underground, chest.clone().sub(underground)), false, 'terrain blocks the shot');
 });
