@@ -33,6 +33,15 @@
       "baseSha": "c14417a3409d58783342af07bbec709148c08ee5",
       "dependsOn": [],
       "createdAt": "2026-11-15T00:01:25.570Z"
+    },
+    {
+      "id": "115795ac-1301-49b3-82ba-e36a4ad6d88d",
+      "role": "claude-1",
+      "kind": "onboard",
+      "instruction": "Setup-only connection test. Reply in under 700 characters with marker TEAMRELAY-H26, your assigned role and waiting-for-human-resume status. No tools or edits are needed. Do not claim tests or browser checks. The worker records the actual checkout SHA separately.",
+      "baseSha": "c14417a3409d58783342af07bbec709148c08ee5",
+      "dependsOn": [],
+      "createdAt": "2026-11-15T00:01:26.868Z"
     }
   ],
   "humanResume": null,
