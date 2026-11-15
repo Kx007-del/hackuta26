@@ -1,0 +1,14 @@
+
+> hackuta26@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.8 building client environment for production...
+transforming...
+✓ 38 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            0.59 kB │ gzip:   0.37 kB
+dist/assets/index-DuwO0cTK.css            15.32 kB │ gzip:   4.02 kB
+dist/assets/index-C4AXFlah.js            227.70 kB │ gzip:  71.45 kB
+dist/assets/HillsidePreview-DuEJCj9Z.js  531.70 kB │ gzip: 139.82 kB
+✓ built in 1.13s

@@ -1,0 +1,21 @@
+
+> hackuta26@0.1.0 team:test
+> node --test scripts/relay.test.mjs
+
+✔ worker requirements exclude coordinator-only first-turn restrictions (0.832417ms)
+✔ idle heartbeats bound GitHub writes while checking lease ownership and reporting state changes (0.927625ms)
+✔ paused/stopped/blocked control fails closed except explicit setup onboarding (0.283084ms)
+✔ dependency failure and already-started turn cannot be automatically replayed (0.103583ms)
+✔ permanent reviewer/test roles and exact base cannot be overridden by task data (0.081417ms)
+✔ rename checks both ends and prevents stealing test/source/instruction ownership (0.488ms)
+✔ coordinator cannot finish with missing tests/review or create acknowledgement loops (0.175416ms)
+✔ common provider/GitHub credentials are redacted from published results (0.078708ms)
+✔ provider subprocesses use bounded modes, strict Claude model and stop on pause/failure (490.3ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 546.366
