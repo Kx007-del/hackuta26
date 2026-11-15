@@ -8,6 +8,9 @@ import { ineligibleReason, type AttemptProgress } from '../progression/rules';
 import type { ScoringProgress } from '../progression/server';
 import { judgeAttempt, type GeminiOutcome } from './gemini';
 import { blendScore, parseTelemetry, scoreTelemetry, type TelemetryParts } from './telemetry';
+import type { CompetitionScoring } from '../competitions/server';
+import type { CompetitionReceipt } from '../../shared/competitions';
+import { CompetitionError } from '../competitions/rules';
 
 export const MAX_CLIP_BYTES = 8 * 1024 * 1024;
 const CLIP_TYPES = new Set(['video/webm', 'video/mp4']);
@@ -27,6 +30,7 @@ export type ScoreResponse = {
   progress?: AttemptProgress;
   /** True when this attempt was already saved and the stored result is being returned again. */
   replayed?: boolean;
+  competition?: CompetitionReceipt;
 };
 
 type Options = {
@@ -40,6 +44,7 @@ type Options = {
   now?: () => number;
   /** Optional community progression (XP, streaks, badges). Scoring works without it. */
   progress?: ScoringProgress;
+  competitions?: CompetitionScoring;
 };
 
 export function registerShowcaseScoring(app: Express, options: Options = {}) {
@@ -106,6 +111,24 @@ export function registerShowcaseScoring(app: Express, options: Options = {}) {
       distanceM: Math.round(Math.hypot(targetBase.x - shooter.x, targetBase.z - shooter.z) * 10) / 10,
     };
     const parts = scoreTelemetry(telemetry, derived);
+
+    // Competition attempts share the validated geometry/scoring path, but never award global XP
+    // or invoke paid AI judging. Only a server-reserved, owned event attempt can be recorded.
+    if (req.headers['x-competition-id'] !== undefined || req.headers['x-competition-attempt'] !== undefined) {
+      if (!options.competitions) { res.status(503).json({ error: 'Competition scoring is unavailable.' }); return; }
+      const score = blendScore(parts.score, null, hit);
+      const ineligible = ineligibleReason({ shots: telemetry.shots, elapsedMs: telemetry.elapsedMs,
+        movedM: Math.hypot(shooter.x - SPAWN_POINT.x, shooter.z - SPAWN_POINT.z), turnDeg: parts.turnDeg });
+      try {
+        const receipt = options.competitions.score(req, telemetry, { score, hit, ineligible, elapsedMs: telemetry.elapsedMs });
+        res.setHeader('Cache-Control', 'no-store');
+        res.json({ score: receipt.score, hit: receipt.hit, telemetry: { onStructure: parts.onStructure, distanceM: parts.distanceM, turnDeg: Math.round(parts.turnDeg), components: parts.components, score: parts.score }, ai: { status: 'declined' }, competition: receipt });
+      } catch (error) {
+        if (error instanceof CompetitionError) res.status(error.status).json({ error: error.message });
+        else { console.error('Competition scoring failed.'); res.status(500).json({ error: 'Competition scoring failed. Retry the same attempt.' }); }
+      }
+      return;
+    }
 
     // Claim the attempt before any AI work: a replayed or duplicate request is recorded once.
     const progress = options.progress?.begin(req, res, req.headers[ATTEMPT_HEADER]);
