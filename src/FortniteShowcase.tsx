@@ -67,10 +67,10 @@ export default function FortniteShowcase({
       </a>
     </header>
     <main>
-      {step !== 'Practice' && <nav className="showcase-steps" aria-label="Showcase steps">
-        <a href="/" aria-current={step === 'Reference' ? 'page' : undefined}>01 Reference</a>
+      {step === 'Results' && <nav className="showcase-steps" aria-label="Showcase steps">
+        <a href="/">01 Reference</a>
         <a href={PRACTICE}>02 Practice</a>
-        <span aria-current={step === 'Results' ? 'page' : undefined}>03 Results</span>
+        <span aria-current="page">03 Results</span>
       </nav>}
       {step === 'Practice' ? <section className="showcase-route" aria-labelledby="practice-heading">
         <h1 id="practice-heading">Take the trick shot</h1>
