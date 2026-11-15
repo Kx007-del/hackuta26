@@ -2,9 +2,15 @@
   "role": "claude-1",
   "lease": {
     "session": "6b8c361c-2f6d-4946-bf4d-fff7fb408f2a",
-    "at": "2026-11-15T00:42:49.008Z",
+    "at": "2026-11-15T00:42:50.172Z",
     "machine": "KrunalMadhani"
   },
   "status": "working",
-  "results": {}
+  "results": {
+    "0a31b619-2009-4a21-93cb-43755475ffb2": {
+      "status": "running",
+      "startedAt": "2026-11-15T00:42:49.850Z",
+      "baseSha": "a2d70805685bb1abda5fd3017444ecb6f185a4a7"
+    }
+  }
 }
