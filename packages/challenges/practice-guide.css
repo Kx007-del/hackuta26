@@ -14,12 +14,22 @@
   line-height: 1.2;
 }
 
-.practice-guide h3 {
+.practice-guide details {
   margin-top: 1rem;
-  padding-top: 0.75rem;
   border-top: 1px solid var(--border);
+}
+
+.practice-guide summary {
+  padding-block: 0.75rem;
   color: #f3f1ee;
   font-size: 1.125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.practice-guide summary:focus-visible {
+  outline: 2px solid #ff6e88;
+  outline-offset: 3px;
 }
 
 .practice-guide p {
