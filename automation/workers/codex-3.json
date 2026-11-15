@@ -2,7 +2,7 @@
   "role": "codex-3",
   "lease": {
     "session": "a71833f5-20db-4630-bdae-7325b3b559bb",
-    "at": "2026-11-15T00:30:07.517Z",
+    "at": "2026-11-15T00:30:14.927Z",
     "machine": "HpPavilion"
   },
   "status": "working",
@@ -13,9 +13,13 @@
       "error": "Agent reported a blocker; inspect local reply/logs"
     },
     "082a7063-2329-4d38-8324-7abc800f4a26": {
-      "status": "running",
-      "startedAt": "2026-11-15T00:30:02.602Z",
-      "baseSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d"
+      "status": "done",
+      "finishedAt": "2026-11-15T00:30:14.451Z",
+      "baseSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
+      "headSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
+      "branch": null,
+      "model": "assigned Codex profile",
+      "text": "TEAMRELAY-H26 | codex-3 | transport reply received | waiting for human resume."
     }
   }
 }
