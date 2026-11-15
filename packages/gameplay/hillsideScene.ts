@@ -97,6 +97,145 @@ export function clipShoulderCamera(pivot: THREE.Vector3, offset: THREE.Vector3, 
   return result;
 }
 
+// ---- Player physics: run, jump, gravity, slope limits ----------------------
+// Tuned by eye against the reference: a quick run, a short hop, and a fall
+// that visibly accelerates down the hillside.
+export const RUN_SPEED = 6.2;
+export const GRAVITY = 15;
+export const JUMP_SPEED = 7;
+const GROUND_ACCEL = 16;
+const AIR_ACCEL = 2.5;
+/** Steepest terrain a grounded player can walk up (rise over run, about 40°). */
+export const MAX_CLIMB_SLOPE = .85;
+const SNAP_DOWN = .45;
+const MAX_FALL_SPEED = 45;
+
+export type PlayerState = { x: number; z: number; y: number; vx: number; vz: number; vy: number; grounded: boolean };
+export type PlayerInput = { forward: number; right: number; heading: number; jump: boolean };
+
+type Support = { height: number; deck: boolean };
+
+/** The surface a player at height y can stand on at (x, z), or undefined when the spot is solid. */
+function supportAt(x: number, z: number, y: number): Support | undefined {
+  if (!withinWalkArea(x, z) || overlapsHut(x, z, PLAYER_RADIUS)) return undefined;
+  const ground = terrainHeight(x, z);
+  const deck = deckHeight(x, z, PLAYER_RADIUS);
+  if (deck !== undefined && deck > ground) {
+    // The build is solid from the side and underneath; it only supports from above.
+    return y >= deck - STEP_UP ? { height: deck, deck: true } : undefined;
+  }
+  return { height: ground, deck: false };
+}
+
+export function spawnPlayer(x = 0, z = 0): PlayerState {
+  const y = supportAt(x, z, spawnHeight)?.height ?? spawnHeight;
+  return { x, z, y, vx: 0, vz: 0, vy: 0, grounded: true };
+}
+
+/** Advance the player by dt seconds. Pure: returns a new state. */
+export function stepPlayer(state: PlayerState, input: PlayerInput, dt: number): PlayerState {
+  const p = { ...state };
+  const length = Math.hypot(input.forward, input.right);
+  let wishX = 0, wishZ = 0;
+  if (length) {
+    const sin = Math.sin(input.heading), cos = Math.cos(input.heading);
+    wishX = (sin * input.forward + cos * input.right) / length;
+    wishZ = (-cos * input.forward + sin * input.right) / length;
+  }
+  let speed = RUN_SPEED;
+  if (p.grounded && length) {
+    // Downhill carries you faster, uphill slows you down.
+    const probe = .6;
+    const here = supportAt(p.x, p.z, p.y)?.height ?? p.y;
+    const ahead = supportAt(p.x + wishX * probe, p.z + wishZ * probe, p.y + STEP_UP)?.height ?? here;
+    speed *= THREE.MathUtils.clamp(1 - (ahead - here) / probe * .45, .6, 1.35);
+  }
+  // Grounded: snappy acceleration and braking. Airborne: keep momentum and only steer while a key is held.
+  const jumping = input.jump && p.grounded;
+  if ((p.grounded && !jumping) || length) {
+    const blend = Math.min(1, (p.grounded && !jumping ? GROUND_ACCEL : AIR_ACCEL) * dt);
+    p.vx += (wishX * speed - p.vx) * blend;
+    p.vz += (wishZ * speed - p.vz) * blend;
+  }
+  if (jumping) {
+    p.vy = JUMP_SPEED;
+    p.grounded = false;
+  }
+
+  const tryMove = (nx: number, nz: number) => {
+    const support = supportAt(nx, nz, p.y);
+    if (!support) return false;
+    const rise = support.height - p.y;
+    if (p.grounded) {
+      if (support.deck ? rise > STEP_UP : rise > Math.max(.02, Math.hypot(nx - p.x, nz - p.z) * MAX_CLIMB_SLOPE)) return false;
+    } else if (rise > STEP_UP) {
+      return false;
+    }
+    p.x = nx;
+    p.z = nz;
+    return true;
+  };
+  const dx = p.vx * dt, dz = p.vz * dt;
+  if ((dx || dz) && !tryMove(p.x + dx, p.z + dz)) {
+    if (dx && tryMove(p.x + dx, p.z)) p.vz = 0;
+    else if (dz && tryMove(p.x, p.z + dz)) p.vx = 0;
+    else p.vx = p.vz = 0;
+  }
+
+  const floor = supportAt(p.x, p.z, p.y)?.height ?? p.y;
+  if (p.grounded) {
+    if (floor < p.y - SNAP_DOWN) {
+      p.grounded = false;
+      p.vy = 0;
+    } else {
+      p.y = floor;
+    }
+  }
+  if (!p.grounded) {
+    p.vy = Math.max(p.vy - GRAVITY * dt, -MAX_FALL_SPEED);
+    p.y += p.vy * dt;
+    if (p.y <= floor && p.vy <= 0) {
+      p.y = floor;
+      p.vy = 0;
+      p.grounded = true;
+    }
+  }
+  return p;
+}
+
+// ---- Target -----------------------------------------------------------------
+export const TARGET_HEIGHT = 1.9;
+export const TARGET_RADIUS = .42;
+export const targetBase = (() => {
+  const x = ridgeForward.x * RIDGE_DISTANCE, z = ridgeForward.y * RIDGE_DISTANCE;
+  return new THREE.Vector3(x, terrainHeight(x, z), z);
+})();
+
+/** Hitscan against the standing target (a vertical cylinder). Terrain blocks the shot. */
+export function rayHitsTarget(origin: THREE.Vector3, direction: THREE.Vector3, base = targetBase) {
+  const d = direction.clone().normalize();
+  const ox = origin.x - base.x, oz = origin.z - base.z;
+  const a = d.x * d.x + d.z * d.z;
+  if (a < 1e-9) return false;
+  const b = 2 * (ox * d.x + oz * d.z);
+  const c = ox * ox + oz * oz - TARGET_RADIUS ** 2;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return false;
+  const root = Math.sqrt(disc);
+  let hitAt: number | undefined;
+  for (const t of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
+    if (t < 0) continue;
+    const y = origin.y + d.y * t;
+    if (y >= base.y && y <= base.y + TARGET_HEIGHT) { hitAt = t; break; }
+  }
+  if (hitAt === undefined) return false;
+  for (let t = 1; t < hitAt - TARGET_RADIUS; t += .5) {
+    const x = origin.x + d.x * t, y = origin.y + d.y * t, z = origin.z + d.z * t;
+    if (y < terrainHeight(x, z)) return false;
+  }
+  return true;
+}
+
 function randomSequence(seed: number) {
   return () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
 }
@@ -498,15 +637,34 @@ export function makeHillsideScene() {
   playerShadow.rotation.x=-Math.PI/2;
   scene.add(playerShadow);
 
-  // An unobtrusive range stake marks the estimated sightline, not a visible opponent from the footage.
-  const ridgePoint = new THREE.Vector3(ridgeForward.x * RIDGE_DISTANCE, 0, ridgeForward.y * RIDGE_DISTANCE);
-  ridgePoint.y = terrainHeight(ridgePoint.x, ridgePoint.z);
-  box(scene, trim, [.10, .69, .1], [ridgePoint.x,ridgePoint.y+.34,ridgePoint.z]);
-  const pennant = box(scene, glass, [.43,.21,.056],[ridgePoint.x,ridgePoint.y+.71,ridgePoint.z]);
-  pennant.rotation.y = -RIDGE_HEADING;
+  // An original practice dummy at the estimated 61 m spot. It ignores fog and
+  // glows slightly so it reads at distance against the dark hillside.
+  const ridgePoint = targetBase.clone();
+  const target = new THREE.Group();
+  target.name = 'Target dummy';
+  target.position.copy(targetBase);
+  target.rotation.y = -RIDGE_HEADING;
+  scene.add(target);
+  const targetSkin = material(new THREE.MeshStandardMaterial({ color: '#ff6b35', emissive: '#ff4515', emissiveIntensity: .7, roughness: .55, fog: false }));
+  const targetTrim = material(new THREE.MeshStandardMaterial({ color: '#ffe0b8', emissive: '#ffb070', emissiveIntensity: .5, roughness: .6, fog: false }));
+  const torso = new THREE.Mesh(geometry(new THREE.CapsuleGeometry(.3, .62, 4, 10)), targetSkin);
+  torso.position.y = 1.08;
+  target.add(torso);
+  const head = new THREE.Mesh(geometry(new THREE.SphereGeometry(.2, 14, 10)), targetTrim);
+  head.position.y = 1.72;
+  target.add(head);
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Mesh(geometry(new THREE.CapsuleGeometry(.11, .5, 3, 8)), targetSkin);
+    leg.position.set(side * .14, .38, 0);
+    target.add(leg);
+  }
+  const band = new THREE.Mesh(geometry(new THREE.TorusGeometry(.31, .035, 6, 20)), targetTrim);
+  band.rotation.x = Math.PI / 2;
+  band.position.y = 1.2;
+  target.add(band);
 
   return {
-    scene, mannequin, legPivots, playerShadow, ridgePoint, cone,
+    scene, mannequin, legPivots, playerShadow, ridgePoint, cone, target,
     dispose() {
       for(const mesh of instances) mesh.dispose();
       for(const value of geometries) value.dispose();

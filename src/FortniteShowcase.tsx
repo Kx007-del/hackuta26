@@ -39,8 +39,8 @@ export default function FortniteShowcase({ search = window.location.search }: { 
       <section className="showcase-practice" aria-labelledby="practice-heading">
         <p className="showcase-eyebrow">02 / SCENE PREVIEW</p>
         <h2 id="practice-heading">EXPLORE THE HILLSIDE</h2>
-        <p>Walk the ramp and landing with the cone already in place, or turn toward the ridge. The uphill marker is positioned at an estimated 61 m from spawn.</p>
-        <p className="showcase-muted">Movement and mouse look are available. Firing and scoring are still being built.</p>
+        <p>Run the ramp, jump off the landing, turn toward the hill and take the shot. The target stands an estimated 61 m from spawn.</p>
+        <p className="showcase-muted">Running, jumping and hip-fire are playable. Scoring and challenges are still being built.</p>
         {!playing
           ? <button type="button" className="showcase-start" onClick={() => setPlaying(true)}>START PRACTICE PREVIEW ↗</button>
           : <Suspense fallback={<p role="status">Loading hillside preview…</p>}>
