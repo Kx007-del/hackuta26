@@ -58,8 +58,9 @@ export function registerAuth(app: Express, options: { progression: ProgressionSt
     const body = req.body;
     if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(k => !['username', 'password'].includes(k)) ||
       typeof body.username !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.-]{2,23}$/.test(body.username) ||
-      typeof body.password !== 'string' || body.password.length < 15 || body.password.length > 128 || !body.password.trim() ||
-      ['passwordpassword', '123456789012345', '12345678901234567890', 'qwertyuiopasdfgh'].includes(body.password.toLowerCase())) {
+      typeof body.password !== 'string' || !body.password.length || body.password.length > 128 ||
+      (action === 'register' && (body.password.length < 15 || !body.password.trim() ||
+        ['passwordpassword', '123456789012345', '12345678901234567890', 'qwertyuiopasdfgh'].includes(body.password.toLowerCase())))) {
       res.status(400).json({ error: 'Use a 3–24 character username (letters, numbers, _ . -) and a 15–128 character password.' }); return;
     }
     const username = body.username.toLowerCase();
