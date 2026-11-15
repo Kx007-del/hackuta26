@@ -8,6 +8,8 @@ import { resolveVideoLink } from './video-links';
 
 export const MAX_CLIP_BYTES = 50 * 1024 * 1024;
 const MAX_STORED_BYTES = 512 * 1024 * 1024;
+/** Hard cap on saved reference records (links and uploads). Records are never evicted, because relays point at them by id. */
+export const MAX_REFERENCE_RECORDS = 5000;
 const idValid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v);
 const extensions: Record<string, string> = { 'video/mp4': '.mp4', 'video/webm': '.webm', 'video/quicktime': '.mov' };
 const supportedType = (v: unknown): v is string => typeof v === 'string' && Object.prototype.hasOwnProperty.call(extensions, v);
@@ -24,7 +26,8 @@ export function validVideoHeader(bytes: Buffer, type: string) {
   return type === 'video/quicktime' ? major === 'qt  ' : new Set(['isom','iso2','iso3','iso4','iso5','iso6','mp41','mp42','avc1','dash','M4V ']).has(major);
 }
 
-export function registerClipApi(app: Express, options: { directory?: string } = {}) {
+export function registerClipApi(app: Express, options: { directory?: string; maxRecords?: number } = {}) {
+  const maxRecords = options.maxRecords ?? MAX_REFERENCE_RECORDS;
   const database = process.env.DATABASE_PATH?.trim();
   const defaultDirectory = database && database !== ':memory:' ? join(dirname(resolve(database)), 'clips') : resolve('data/clips');
   const directory = resolve(options.directory ?? (process.env.CLIP_DIRECTORY?.trim() || defaultDirectory));
@@ -33,6 +36,10 @@ export function registerClipApi(app: Express, options: { directory?: string } = 
   for (const file of readdirSync(directory)) {
     if (file.endsWith('.json.tmp') && idValid(file.slice(0, -9))) unlinkSync(join(directory, file));
   }
+  // Count existing records once and index saved links, so repeat saves reuse a record and no request scans the folder.
+  let records = 0;
+  const linkIndex = new Map<string, string>();
+  const linkKey = (c: Pick<LinkedClipReference, 'arenaId' | 'provider' | 'videoId' | 'start' | 'end'>) => `${c.arenaId}|${c.provider}|${c.videoId}|${c.start}|${c.end}`;
   function writeSynced(file: string, data: string | Buffer) {
     const fd = openSync(file, 'wx');
     try { writeFileSync(fd, data); fsyncSync(fd); } finally { closeSync(fd); }
@@ -54,7 +61,14 @@ export function registerClipApi(app: Express, options: { directory?: string } = 
       return media.isFile() && media.size === clip.size ? clip : undefined;
     } catch { return undefined; }
   }
+  for (const file of readdirSync(directory)) {
+    if (!file.endsWith('.json') || !idValid(file.slice(0, -5))) continue;
+    records += 1;
+    const clip = get(file.slice(0, -5));
+    if (clip?.source === 'link') linkIndex.set(linkKey(clip), clip.id);
+  }
   const fail = (res: Response, message: string, status = 400) => res.status(status).json({ error: message });
+  const storageFull = (res: Response) => fail(res, 'Reference storage is full. Ask the host to free space before saving more.', 507);
   const raw = express.raw({ type: () => true, limit: MAX_CLIP_BYTES, inflate: false });
   let uploads = 0;
   let closing = false;
@@ -74,12 +88,18 @@ export function registerClipApi(app: Express, options: { directory?: string } = 
       return;
     } finally { uploads -= 1; }
     if (closing || req.aborted || res.destroyed) return;
+    const existingId = linkIndex.get(linkKey({ arenaId, ...link, start, end }));
+    const existing = existingId ? get(existingId) : undefined;
+    if (existing) { res.status(200).json(existing); return; }
+    if (records >= maxRecords) { storageFull(res); return; }
     const id = randomUUID();
     const clip: LinkedClipReference = { id, arenaId, name: `${link.provider === 'youtube' ? 'YouTube' : 'TikTok'} / ${link.videoId}`, source: 'link', ...link, start, end, createdAt: new Date().toISOString() };
     const temporary = join(directory, id + '.json.tmp');
     try {
       writeSynced(temporary, JSON.stringify(clip));
       renameSync(temporary, join(directory, id + '.json'));
+      records += 1;
+      linkIndex.set(linkKey(clip), id);
       res.status(201).json(clip);
     } catch {
       try { unlinkSync(temporary); } catch {}
@@ -128,11 +148,13 @@ export function registerClipApi(app: Express, options: { directory?: string } = 
     try {
       const total = readdirSync(directory).filter(file => /\.(mp4|webm|mov)$/.test(file)).reduce((size, file) => size + statSync(join(directory, file)).size, 0);
       if (total + req.body.length > MAX_STORED_BYTES) { fail(res, 'Clip storage is full. Ask the host to free space before uploading.', 507); return; }
+      if (records >= maxRecords) { storageFull(res); return; }
       const clip: ClipReference = { id, arenaId: arenaId as ArenaId, name, contentType, size: req.body.length, duration, start, end, createdAt: new Date().toISOString() };
       writeSynced(mediaPath, req.body);
       writeSynced(metadataPath + '.tmp', JSON.stringify(clip));
       renameSync(metadataPath + '.tmp', metadataPath);
       committed = true;
+      records += 1;
       res.status(201).json(clip);
     } catch {
       if (!committed) for (const file of [mediaPath, metadataPath + '.tmp']) { try { unlinkSync(file); } catch {} }
