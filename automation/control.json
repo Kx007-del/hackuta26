@@ -5,7 +5,7 @@
   "goal": "H26-3: improve the existing three-game clip-to-practice flow with accurate game-specific practice steps and controls, and deterministic hosted runtime/health metadata. Preserve existing clip upload/trim/linkage, relay/replay/proof behavior, original practice environments and supplied FaZe toolkit fonts/logos. Use https://hackuta26.onrender.com/ as the current hosted browser baseline; candidate changes are tested locally until deployment is separately authorized.\n\nRuntime interface: server/runtime-config.ts exports resolveRuntimeConfig(env: Record<string,string|undefined>) -> {host:string,port:number,commit:string|null}. Trim HOST; nonblank explicit HOST wins; otherwise exactly RENDER='true' defaults to 0.0.0.0, local defaults to 127.0.0.1. Trim PORT; unset/blank uses 5173; otherwise ASCII digits only, integer 0..65535, invalid throws a clear startup error without exposing the supplied value. Trim 40-hex RENDER_GIT_COMMIT, accept either case and normalize lowercase; invalid/unset is null. Bootstrap consumes this result. Health preserves ok:true/service:'run-it-back' and always includes commit, with no arbitrary environment details.\n\nGuide interface: packages/challenges/practice-guide.ts exports practiceGuide(config: ChallengeConfig) -> {title:string,steps:string[],controls:string[]}, for valid configs only. Seven presets: jump, spin180, spin360, ramp-shot, wall-edit, precision, dash-peek. Controls reflect real WASD, mouse/arrow/Q/E aiming/turning, C aim-down-sights, F fire, R retry; Space only in non-tactical modes, B for buildyard, G only for wall-edit, X only for dash-peek. Align assist absent for spin presets. Describe actual ramp takeoff, wall opening/jump/fire, net airborne spin, grounded stationary precision, and covered left-crate dash followed by stop/fire. Tactical wording is turn, not spin. Use replay?.config ?? config for guide/objective when replaying. No automatic detection/reconstruction/anti-cheat or fabricated completion claims. Keep typography Source/Anton and supplied logos only.\n\nAcceptance: independent regression tests and existing suite pass; production build passes; independent exact-SHA review; actual candidate browser checks for representative presets/config switching and separate hosted-baseline observations. No Render settings change, integration/main merge or deployment is included in worker work.\n",
   "baseSha": "7137eefc98b84ab278a95c12fc336d3efe5cb3ec",
   "maxTurns": 30,
-  "turns": 4,
+  "turns": 5,
   "tasks": [
     {
       "id": "7fd14478-a070-45e4-b7fa-585eb1c6b2d7",
@@ -104,13 +104,25 @@
         "0017aefd-20d2-449e-b102-54f73fe4f8ed"
       ],
       "createdAt": "2026-11-15T01:14:35.910Z"
+    },
+    {
+      "id": "174a24b5-0111-4c71-8654-71f0e15877c9",
+      "role": "claude-1",
+      "kind": "review",
+      "instruction": "Independently review the actual frontend candidate at this exact head, comparing source changes from 411ce3c1bf5f138ab97fd14356eb0a7561daf687. Codex 3 authored the helper/component/CSS/snippets as tool-free proposals; desktop Codex 1 applied them under recorded temporary ownership. Claude 2 authored tests/h26-3-guide.test.ts and desktop cherry-picked its commit. Desktop actually ran 65/65 application tests and production build at this head. This is an interim frontend review while Mac backend is still queued, not final full-milestone approval. Read practice-guide.ts, PracticeGuide.tsx/CSS, App and GameArena actual diff, guide tests and relevant existing input/proof code. Check accurate preset steps, available controls, replay-aware config/label/distance, single guide replacing playbook outside the clipped canvas, absence from premiere, accessibility/contrast/font provenance and test quality. Report actionable findings with file/line and reviewed SHA, and distinguish static inspection from tests/browser checks. Do not edit source. Final combined backend/frontend exact-SHA review follows after backend/tests. Opus 5.5 only. No integration/main merge, hosting changes or deployment.",
+      "baseSha": "74f0707e8379ab42fc84ffb91e65e25da7e48d72",
+      "dependsOn": [
+        "ee32e5b5-2baa-4d3e-a938-d3dc6afde301",
+        "c8530e9c-6de2-4092-a3ee-afaffafa731d"
+      ],
+      "createdAt": "2026-11-15T01:23:04.627Z"
     }
   ],
   "humanResume": {
     "instruction": "Start the corrected cycle",
     "at": "2026-11-15T00:56:32.519Z"
   },
-  "summary": "Codex 3 guide proposal applied at aef217a; UI proposal and independent executable guide tests assigned. Mac backend remains queued.",
+  "summary": "Frontend and 16 independent guide regressions integrated at 74f0707; 65 app tests/build pass; Claude 1 reviews actual frontend while desktop runs browser QA.",
   "previousRunId": "6054582b-2516-445f-b8ce-1124ac199a61",
   "cycleApproval": "Start the corrected cycle",
   "productGoal": "H26-3: improve the existing three-game clip-to-practice flow with accurate game-specific practice steps and controls, and deterministic hosted runtime/health metadata. Preserve existing clip upload/trim/linkage, relay/replay/proof behavior, original practice environments and supplied FaZe toolkit fonts/logos. Use https://hackuta26.onrender.com/ as the current hosted browser baseline; candidate changes are tested locally until deployment is separately authorized.\n\nRuntime interface: server/runtime-config.ts exports resolveRuntimeConfig(env: Record<string,string|undefined>) -> {host:string,port:number,commit:string|null}. Trim HOST; nonblank explicit HOST wins; otherwise exactly RENDER='true' defaults to 0.0.0.0, local defaults to 127.0.0.1. Trim PORT; unset/blank uses 5173; otherwise ASCII digits only, integer 0..65535, invalid throws a clear startup error without exposing the supplied value. Trim 40-hex RENDER_GIT_COMMIT, accept either case and normalize lowercase; invalid/unset is null. Bootstrap consumes this result. Health preserves ok:true/service:'run-it-back' and always includes commit, with no arbitrary environment details.\n\nGuide interface: packages/challenges/practice-guide.ts exports practiceGuide(config: ChallengeConfig) -> {title:string,steps:string[],controls:string[]}, for valid configs only. Seven presets: jump, spin180, spin360, ramp-shot, wall-edit, precision, dash-peek. Controls reflect real WASD, mouse/arrow/Q/E aiming/turning, C aim-down-sights, F fire, R retry; Space only in non-tactical modes, B for buildyard, G only for wall-edit, X only for dash-peek. Align assist absent for spin presets. Describe actual ramp takeoff, wall opening/jump/fire, net airborne spin, grounded stationary precision, and covered left-crate dash followed by stop/fire. Tactical wording is turn, not spin. Use replay?.config ?? config for guide/objective when replaying. No automatic detection/reconstruction/anti-cheat or fabricated completion claims. Keep typography Source/Anton and supplied logos only.\n\nAcceptance: independent regression tests and existing suite pass; production build passes; independent exact-SHA review; actual candidate browser checks for representative presets/config switching and separate hosted-baseline observations. No Render settings change, integration/main merge or deployment is included in worker work.\n",
@@ -189,6 +201,12 @@
         "c8530e9c-6de2-4092-a3ee-afaffafa731d"
       ],
       "sourceSha": "aef217a035e9c153eed01faaa111e45bb0f97e8a"
+    },
+    {
+      "at": "2026-11-15T01:23:05.145Z",
+      "action": "frontend_exact_sha_review",
+      "taskId": "174a24b5-0111-4c71-8654-71f0e15877c9",
+      "sourceSha": "74f0707e8379ab42fc84ffb91e65e25da7e48d72"
     }
   ]
 }
