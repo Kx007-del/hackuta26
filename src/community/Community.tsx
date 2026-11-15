@@ -93,7 +93,7 @@ export function CommunitySection({ progression }: { progression: Progression }) 
     <div className="community-grid">
       <div>
         <div className="board-mode" role="group" aria-label="Which standings to show">
-          <button type="button" aria-pressed={mode === 'showcase'} onClick={() => setMode('showcase')}>Showcase leaderboard <small>example players</small></button>
+          <button type="button" aria-pressed={mode === 'showcase'} onClick={() => setMode('showcase')}>Showcase leaderboard <small>fictional standings</small></button>
           <button type="button" aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Live standings <small>real players</small></button>
         </div>
         <Leaderboards version={progression.version} mode={mode} profile={profile} onShowcase={() => setMode('showcase')} />
@@ -202,16 +202,15 @@ function ShowcaseTable({ board, metric, label, profile }: { board: Board; metric
   const rows = showcaseBoard(board, profile);
   const you = rows.find(r => r.kind === 'you');
   return <>
-    <p className="showcase-banner"><b>Example players.</b> These players and results are fictional, for illustration only. They aren’t real users or real activity.</p>
     <table className="community-table">
-      <caption className="visually-hidden">{label} showcase leaderboard with example players</caption>
+      <caption className="visually-hidden">{label} fictional showcase standings</caption>
       <thead><tr><th scope="col">Showcase position</th><th scope="col">Player</th><th scope="col">{metric}</th><th scope="col">Badges</th></tr></thead>
       <tbody>
         {rows.map(row => <tr key={`${row.kind}-${row.position}`} className={row.kind === 'you' ? 'is-you is-real' : 'is-example'}>
           <td>{row.position}</td>
           <td>{row.kind === 'you'
             ? <><span className="community-real-tag">You — real progress</span> {row.name}</>
-            : <>{row.name} <span className="community-example-tag">Example</span></>}</td>
+            : row.name}</td>
           <td>{row.value}</td>
           <td><BadgeStrip ids={row.badges} /></td>
         </tr>)}
@@ -222,7 +221,7 @@ function ShowcaseTable({ board, metric, label, profile }: { board: Board; metric
         : profile ? 'You’re not on this board yet. Your row appears here once you have real progress for it.'
         : 'Finish an eligible attempt and your real progress will appear here as “You — real progress”.'}
     </p>
-    <p className="community-note">Sorted with the same rules as Live standings. Ties: {TIE_TEXT[board]}</p>
+    <p className="community-note">Showcase players are fictional. Sorted with the same rules as Live standings. Ties: {TIE_TEXT[board]}</p>
   </>;
 }
 

@@ -250,6 +250,6 @@ test('wiring: the client retries with the same attempt id and refreshes progress
   assert.match(page, /useProgression\(\)/, 'results and global boards load the persisted guest progress');
   const community = readFileSync(new URL('../src/community/Community.tsx', import.meta.url), 'utf8');
   assert.match(community, /\[board, version, retry, mode\]/, 'live boards refetch after each game');
-  assert.match(community, /Example players\./);
+  assert.match(community, /Showcase players are fictional\./);
   assert.match(community, /Showcase position/);
 });
