@@ -381,7 +381,7 @@ test('http: repeating the same attempt request or refreshing never adds XP; conc
     const first = await (await api.score(telemetry(), id)).json();
     for (let i = 0; i < 3; i++) {
       c.advance(5000);
-      assert.deepEqual(await (await api.score(telemetry(), id)).json(), first, 'identical replay');
+      assert.deepEqual(await (await api.score(telemetry(), id)).json(), { ...(first as object), replayed: true }, 'identical stored result, marked as a replay');
       await api.me();
     }
     assert.equal((await api.me())!.xp, 10);

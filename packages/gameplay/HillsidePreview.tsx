@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { clipShoulderCamera, makeHillsideScene, RAMP_HEADING, rayHitsTarget, spawnPlayer, stepPlayer, type PlayerState } from './hillsideScene';
-import { createAttemptRecorder, newAttemptId, readConsent, submitScore, writeConsent, type AiConsent, type ScoreResponse } from '../showcase-scoring/client';
+import { createAttemptRecorder, newAttemptId, readConsent, ScoreError, submitScore, writeConsent, type AiConsent, type ScoreResponse } from '../showcase-scoring/client';
 import type { AttemptTelemetry } from '../showcase-scoring/telemetry';
 import { BADGES } from '../progression/rules';
 
 type PreviewControls = { reset: () => void };
-type Scoring = { state: 'idle' } | { state: 'scoring' } | { state: 'done'; result: ScoreResponse } | { state: 'error'; message: string };
+type Scoring = { state: 'idle' } | { state: 'scoring' } | { state: 'done'; result: ScoreResponse } | { state: 'error'; message: string; retry?: () => void };
 /** Turning faster than this (rad/s) counts as "still turning" for the aim-hold measure. */
 const TURNING_RATE = .6;
 /** Keep recording briefly after the shot so the hit is in the clip. */
@@ -201,14 +201,36 @@ export default function HillsidePreview({ onScored }: { onScored?: (result: Scor
       window.setTimeout(async () => {
         if (disposed || request.signal.aborted) return;
         const clip = consentRef.current === 'yes' ? await recorder.finish() : undefined;
-        try {
-          const result = await submitScore(telemetry, clip?.blob, consentRef.current, request.signal, thisAttempt);
-          if (result.progress) onScoredRef.current?.(result);
-          if (!request.signal.aborted && !disposed) setScoring({ state: 'done', result });
-        } catch (cause) {
-          if (!request.signal.aborted && !disposed) setScoring({ state: 'error', message: cause instanceof Error ? cause.message : 'Scoring is unavailable right now.' });
-        }
+        void send({ telemetry, clip: clip?.blob, consent: consentRef.current, attemptId: thisAttempt }, request);
       }, AFTER_SHOT_MS);
+    }
+
+    /**
+     * Submit (or re-submit) one attempt. A retry reuses the same attempt id, so the server
+     * either records it for the first time or replays the stored result: never double XP.
+     */
+    async function send(submission: { telemetry: AttemptTelemetry; clip?: Blob; consent: AiConsent; attemptId: string }, request: AbortController) {
+      try {
+        const result = await submitScore(submission.telemetry, submission.clip, submission.consent, request.signal, submission.attemptId);
+        if (result.progress) onScoredRef.current?.(result);
+        if (!request.signal.aborted && !disposed) setScoring({ state: 'done', result });
+      } catch (cause) {
+        if (request.signal.aborted || disposed) return;
+        const status = cause instanceof ScoreError ? cause.status : 0;
+        const detail = cause instanceof Error ? cause.message : 'Scoring is unavailable right now.';
+        const retry = status === 400 ? undefined : () => {
+          if (scoreRequest !== request) return; // a newer attempt has started
+          const again = new AbortController();
+          scoreRequest = again;
+          setScoring({ state: 'scoring' });
+          void send(submission, again);
+        };
+        setScoring({
+          state: 'error',
+          message: status === 409 ? 'This attempt is still being saved. Wait a moment, then retry.' : `Progress not saved: ${detail}`,
+          retry,
+        });
+      }
     }
 
     function lockChanged() {
@@ -403,7 +425,11 @@ function ScoringPanel({ consent, onConsent, scoring, recordingSupported }: { con
     <div role="status" aria-live="polite">
       {scoring.state === 'idle' && <p className="showcase-score__note">Take one shot per attempt. Press R or Reset to try again.</p>}
       {scoring.state === 'scoring' && <p className="showcase-score__note">Scoring…</p>}
-      {scoring.state === 'error' && <p className="showcase-score__note">{scoring.message}</p>}
+      {scoring.state === 'error' && <div className="showcase-score__error">
+        <p className="showcase-score__note">{scoring.message}</p>
+        {scoring.retry && <button type="button" className="showcase-score__retry" onClick={scoring.retry}>Retry saving this attempt</button>}
+        {scoring.retry && <p className="showcase-score__note">Retrying sends the same attempt again, so it can only count once.</p>}
+      </div>}
       {scoring.state === 'done' && <ScoreResult result={scoring.result} />}
     </div>
   </section>;
@@ -429,17 +455,22 @@ function ScoreResult({ result }: { result: ScoreResponse }) {
         : ai.status === 'declined' ? 'Scored on game data only.'
         : `${UNAVAILABLE[ai.reason] ?? 'AI scoring is unavailable right now.'} Scored on game data only.`}
     </p>
-    {result.progress && <AttemptProgressNote progress={result.progress} />}
+    {result.progress && <AttemptProgressNote progress={result.progress} replayed={!!result.replayed} />}
   </div>;
 }
 
 const BADGE_NAMES: Record<string, string> = Object.fromEntries(BADGES.map(b => [b.id, b.name]));
-function AttemptProgressNote({ progress }: { progress: NonNullable<ScoreResponse['progress']> }) {
+function AttemptProgressNote({ progress, replayed }: { progress: NonNullable<ScoreResponse['progress']>; replayed: boolean }) {
   if (progress.status === 'not-counted') return <p className="showcase-score__progress is-muted">Not counted toward progress: {progress.reason}</p>;
   const xp = progress.xpAwarded > 0 ? `+${progress.xpAwarded} XP` : 'Daily XP cap reached (0 XP)';
-  return <p className="showcase-score__progress">
-    <b>{xp}</b> · {progress.xpToday}/{progress.xpCap} XP today · streak {progress.currentStreak} day{progress.currentStreak === 1 ? '' : 's'}
-    {progress.ranked ? ' · counts for Highest Score' : ` · ${progress.unrankedReason ?? 'Not ranked.'}`}
-    {progress.newBadges.length > 0 && <> · <strong>New badge: {progress.newBadges.map(id => BADGE_NAMES[id] ?? id).join(', ')}</strong></>}
-  </p>;
+  return <div className="showcase-score__progress">
+    <p className="showcase-score__summary">
+      <span><small>XP earned</small><b>{xp}</b></span>
+      <span><small>Best score</small><b>{progress.bestScore ?? '—'}</b>{progress.newBest && <em>New best</em>}</span>
+      <span><small>Today</small><b>{progress.xpToday}/{progress.xpCap} XP</b></span>
+      <span><small>Streak</small><b>{progress.currentStreak} day{progress.currentStreak === 1 ? '' : 's'}</b></span>
+    </p>
+    {progress.newBadges.length > 0 && <p className="showcase-score__badge"><strong>New badge: {progress.newBadges.map(id => BADGE_NAMES[id] ?? id).join(', ')}</strong></p>}
+    <p className="showcase-score__note">{replayed ? 'Already saved — this is the stored result, counted once.' : 'Saved to your progress.'}{progress.ranked ? ' Counts for Highest Score.' : ` ${progress.unrankedReason ?? 'Not ranked.'}`}</p>
+  </div>;
 }

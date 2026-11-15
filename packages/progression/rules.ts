@@ -75,6 +75,17 @@ export function cleanDisplayName(value: unknown): string | undefined {
   return name;
 }
 
+/**
+ * One row to rank. `tieValue` is the secondary key (longest streak on the streak board),
+ * `reachedAt` is when the value was reached (ms). The server's SQL ordering and the
+ * showcase view both follow this order, so a real player slots into the example board
+ * exactly where the live board would put them.
+ */
+export type Standing = { id: string; value: number; tieValue?: number; reachedAt: number };
+export function compareStandings(a: Standing, b: Standing) {
+  return (b.value - a.value) || ((b.tieValue ?? 0) - (a.tieValue ?? 0)) || (a.reachedAt - b.reachedAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+
 /** Public shapes returned by the API. */
 export type BadgeState = { id: BadgeId; name: string; criteria: string; earnedAt: string | null };
 export type Profile = {
@@ -83,6 +94,8 @@ export type Profile = {
   attempts: number; currentStreak: number; longestStreak: number;
   bestScore: number | null;
   ranks: Record<Board, number | null>;
+  /** When each board value was reached (ISO), for the showcase position. */
+  reachedAt: Record<Board, string | null>;
   badges: BadgeState[];
   storageDurable: boolean;
   trackingSince: string;
@@ -94,5 +107,5 @@ export type Leaderboard = {
   tieRule: string; total: number; trackingSince: string; storageDurable: boolean;
 };
 export type AttemptProgress =
-  | { status: 'counted'; xpAwarded: number; xpToday: number; xpCap: number; ranked: boolean; unrankedReason?: string; newBadges: BadgeId[]; currentStreak: number }
+  | { status: 'counted'; xpAwarded: number; xpToday: number; xpCap: number; ranked: boolean; unrankedReason?: string; newBadges: BadgeId[]; currentStreak: number; bestScore: number | null; newBest: boolean }
   | { status: 'not-counted'; reason: string };

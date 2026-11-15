@@ -69,6 +69,11 @@ export function createAttemptRecorder(canvas: HTMLCanvasElement) {
   return { supported: !!(supported && mimeType), start, cancel: discard, maintain, finish, dispose };
 }
 
+/** A failed scoring request; `status` is 0 for a network failure. */
+export class ScoreError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 /** A random id for one attempt, so a repeated request for it is recorded once. */
 export function newAttemptId() {
   try { return crypto.randomUUID(); } catch { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`; }
@@ -91,6 +96,6 @@ export async function submitScore(telemetry: AttemptTelemetry, clip: Blob | unde
     signal,
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.error ?? 'Scoring is unavailable right now.');
+  if (!response.ok) throw new ScoreError(data?.error ?? 'Scoring is unavailable right now.', response.status);
   return data as ScoreResponse;
 }

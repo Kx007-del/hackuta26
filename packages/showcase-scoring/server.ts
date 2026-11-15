@@ -25,6 +25,8 @@ export type ScoreResponse = {
     | { status: 'declined' };
   /** Community progress for this attempt (present when progression is enabled). */
   progress?: AttemptProgress;
+  /** True when this attempt was already saved and the stored result is being returned again. */
+  replayed?: boolean;
 };
 
 type Options = {
@@ -107,7 +109,7 @@ export function registerShowcaseScoring(app: Express, options: Options = {}) {
 
     // Claim the attempt before any AI work: a replayed or duplicate request is recorded once.
     const progress = options.progress?.begin(req, res, req.headers[ATTEMPT_HEADER]);
-    if (progress?.kind === 'replay') { res.setHeader('Cache-Control', 'no-store'); res.json(progress.body); return; }
+    if (progress?.kind === 'replay') { res.setHeader('Cache-Control', 'no-store'); res.json({ ...(progress.body as object), replayed: true }); return; }
     if (progress?.kind === 'busy') { res.status(409).json({ error: 'This attempt is still being scored.' }); return; }
     let finished = false;
     try {

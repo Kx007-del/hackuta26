@@ -153,6 +153,11 @@ export function openProgressionStore(options: { databasePath?: string; now?: () 
       currentStreak: effectiveStreak(row.streak_current, row.streak_last_day, now()),
       longestStreak: row.longest_streak,
       bestScore: row.best_score,
+      reachedAt: {
+        score: row.best_score_at === null ? null : iso(row.best_score_at),
+        streak: row.streak_reached_at === null ? null : iso(row.streak_reached_at),
+        xp: row.last_xp_at === null ? null : iso(row.last_xp_at),
+      },
       ranks: { score: rankOf('score', row.id), streak: rankOf('streak', row.id), xp: rankOf('xp', row.id) },
       badges: BADGES.map(b => ({ ...b, earnedAt: earned.has(b.id) ? iso(earned.get(b.id)!) : null })),
       storageDurable: durable,
@@ -239,7 +244,7 @@ export function openProgressionStore(options: { databasePath?: string; now?: () 
           progress = {
             status: 'counted', xpAwarded, xpToday: (dayRow?.xp ?? 0) + xpAwarded, xpCap: DAILY_XP_CAP, ranked,
             ...(ranked ? {} : { unrankedReason: attempt.aiStatus === 'declined' ? 'Scored on game data only (AI scoring off), so it isn’t ranked.' : 'AI scoring was unavailable, so it isn’t ranked.' }),
-            newBadges, currentStreak: p.streak,
+            newBadges, currentStreak: p.streak, bestScore: p.best, newBest: better,
           };
         }
         const response = buildResponse(progress);
