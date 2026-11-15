@@ -1,0 +1,39 @@
+.fortnite-showcase .auth-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .88fr); gap: clamp(28px, 6vw, 80px); align-items: start; padding-block: 64px; }
+.auth-intro { padding-top: 24px; }
+.fortnite-showcase .auth-intro h1 { font-size: clamp(48px, 6.5vw, 86px); line-height: 1.04; margin-block: 24px; }
+.auth-intro > p:not(.showcase-eyebrow), .auth-intro li { color: #ffffffb3; }
+.auth-intro ul { list-style: none; padding: 0; margin: 28px 0; }
+.auth-intro li { padding: 12px 0; border-bottom: 1px solid #ffffff24; }
+.auth-intro li::before { content: '↗'; color: #ffffff; margin-right: 12px; }
+.auth-guest-link { display: inline-block; margin-top: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 5px; }
+.auth-card { min-width: 0; border: 1px solid #ffffff24; border-top: 3px solid #e4002b; border-radius: 4px; padding: clamp(22px, 3vw, 36px); background: #ffffff03; }
+.fortnite-showcase .auth-card h2 { font-size: 34px; margin-block: 24px 12px; overflow-wrap: anywhere; }
+.auth-card > p { color: #ffffffb3; }
+.auth-mode { display: flex; gap: 24px; border-bottom: 1px solid #ffffff24; }
+.fortnite-showcase .auth-mode a { display: block; font-weight: 700; color: #ffffffb3; padding: 10px 0 14px; border-bottom: 2px solid transparent; }
+.auth-mode [aria-current='page'] { color: #ffffff; border-color: #e4002b; }
+.auth-card label { display: block; font-weight: 700; margin: 22px 0 8px; }
+.auth-card input { width: 100%; min-width: 0; min-height: 48px; padding: 12px 14px; border: 1px solid #ffffff4d; border-radius: 3px; color: #ffffff; background: #111111; font: inherit; }
+.auth-card input:focus { border-color: #ffffff; }
+.auth-card .auth-fine { margin-top: 8px; font-size: 12px; line-height: 1.5; color: #ffffffb3; }
+.auth-password { display: flex; align-items: stretch; }
+.auth-password input { border-radius: 3px 0 0 3px; }
+.auth-password button, .auth-secondary { font: inherit; color: #ffffff; background: #111111; border: 1px solid #ffffff4d; padding: 10px 14px; border-radius: 3px; }
+.auth-password button { border-left: 0; border-radius: 0 3px 3px 0; min-width: 64px; }
+.fortnite-showcase .auth-submit { width: 100%; margin-top: 26px; }
+.auth-error { border-left: 2px solid #e4002b; padding: 12px; margin-top: 16px; }
+.auth-details { border-top: 1px solid #ffffff24; margin-top: 26px; padding-top: 18px; font-size: 12px; color: #ffffffb3; }
+.auth-details summary { cursor: pointer; font-weight: 700; color: #ffffff; }
+.auth-details p { margin-top: 12px; }
+.auth-account-actions { display: flex; flex-direction: column; align-items: start; gap: 18px; margin-bottom: 28px; }
+.showcase-account-link { order: 2; display: inline-flex; gap: 8px; padding: 10px 14px; border: 1px solid #ffffff4d; border-radius: 3px; font-size: 13px; font-weight: 700; max-width: 200px; overflow-wrap: anywhere; }
+.showcase-account-link:hover, .showcase-account-link[aria-current='page'] { border-color: #e4002b; background: #e4002b1a; }
+.fortnite-showcase .competition-nav { order: 1; }
+@media (max-width: 760px) {
+  .fortnite-showcase .auth-layout { grid-template-columns: minmax(0, 1fr); padding-block: 24px 40px; }
+  .auth-intro { padding-top: 0; }
+  .fortnite-showcase .auth-intro h1 { font-size: 52px; margin-block: 18px; }
+  .auth-intro ul { margin-block: 18px; }
+  .showcase-account-link { order: 1; margin-left: auto; max-width: 120px; padding: 10px; }
+  .fortnite-showcase .competition-nav { order: 2; }
+}
