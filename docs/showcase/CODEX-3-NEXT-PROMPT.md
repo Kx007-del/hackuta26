@@ -1,0 +1,15 @@
+You are Codex 3, responsible for frontend/gameplay. This is a manual, bounded assignment; do not start the relay or delegate to other accounts.
+
+Fetch Kx007-del/hackuta26 and create your own topic branch/worktree from the latest origin/build/five-agent-h26. Do not reuse a stale multi-game branch. Read AGENTS.md, README.md, docs/showcase/FORTNITE-REFERENCE-BRIEF.md and docs/showcase/reference.json. The public entry is src/FortniteShowcase.tsx, not the historical src/App.tsx.
+
+Build the visual scene and camera for the ONE fixed reference in public/showcase/fortnite-reference.mp4. Inspect the video yourself before implementation. Keep its fixed player and Fortnite-only entry. Replace the temporary Buildyard practice only when the new preview works. Do not add other games, clip choices, relays or leaderboards.
+
+Create an original Fortnite-inspired hillside: saturated grass rising toward the ridge, wooden stairs/ramp ending in a landing, a wooden cone ALREADY PRESENT on the landing at spawn and every reset, broadleaf/conifer trees, yellow/blue-purple flowers, an uphill hut and soft cyan/teal lighting. Distinguish observed features from estimated geometry using the brief. Include an original neutral cyan mannequin and generic long rifle. No ripped maps, skins, logos, game UI or stream overlays.
+
+Use a third-person right-shoulder camera (starting estimates: 3 m behind, 0.6 m right, head-height pivot, vertical FOV about 50 degrees). Provide two review views: ramp/landing with cone, and aimed hillside. Spawn near the upper ramp facing roughly west; the clip turns left toward the uphill shot. A 61 m ridge target may be a documented scene estimate. Do not require jumping, cone placement or editing: the reference does not establish those requirements.
+
+This task is a navigable visual preview plus reset: WASD movement, mouse look, Escape release and a visible reset button. Be clear about which interactions work. ADS, firing, hit detection, remappable controls and scoring are a subsequent task. Never label the legacy 14/20/26 m jump/build result as a 61 m reference result. Keep new scene code separate from legacy contracts/data.
+
+Own src/ and packages/gameplay/ source only. Do not edit tests, backend, shared scoring contracts, CI or branding assets; ask Codex 1 for any needed interface decision. Use only Source/Anton and the existing supplied FaZe logo. Use original procedural geometry/materials. Dispose resources and listeners on unmount/reset; keep the preview responsive.
+
+Run npm run build and npm test. Browser-test the actual preview: reference loads, scene renders, both review views work, movement/camera work, cone exists before interaction and after reset, Escape releases pointer, no other game/clip flow is reachable. Save screenshots; record visual differences honestly. Push your topic branch and open a PR to build/five-agent-h26. Report branch, commit, PR, checks, screenshots and limitations. Do not merge/deploy; pause for Claude 2 tests and Claude 1 review.

@@ -1,0 +1,27 @@
+.fortnite-showcase { max-width: 1440px; margin: auto; padding: 0 5%; }
+.showcase-header { display: flex; align-items: center; gap: 24px; padding: 26px 0; border-bottom: 1px solid #ffffff24; font-size: 12px; letter-spacing: 1px; }
+.showcase-header img { width: 64px; height: 48px; object-fit: contain; }
+.showcase-tag { margin-left: auto; color: #90e3b2; }
+.showcase-intro { padding: 64px 0 48px; max-width: 850px; }
+.showcase-eyebrow { font-weight: 700; font-size: 12px; letter-spacing: 2px; color: #90e3b2; }
+.fortnite-showcase h1, .fortnite-showcase h2 { font-family: Anton; font-weight: 400; line-height: 1.08; }
+.fortnite-showcase h1 { font-size: clamp(44px, 6.5vw, 94px); margin: 22px 0; }
+.fortnite-showcase h1 em { font-style: normal; color: #ed2546; }
+.fortnite-showcase h2 { font-size: clamp(28px, 3vw, 42px); margin: 14px 0 22px; }
+.fortnite-showcase p { line-height: 1.6; }
+.showcase-intro > p:last-child { max-width: 580px; font-size: 19px; }
+.showcase-reference { display: grid; grid-template-columns: 1fr 1.8fr; gap: 40px; padding: 34px 0 56px; border-top: 1px solid #ffffff24; }
+.showcase-reference video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid #ffffff24; border-radius: 8px; }
+.showcase-muted { color: #b4b4b8; }
+.showcase-practice { border-top: 1px solid #ffffff24; padding: 40px 0 60px; }
+.showcase-practice > p { max-width: 760px; }
+.showcase-start { margin: 18px 0; padding: 18px 30px; background: #e4002b; border: 0; font-weight: 700; }
+.showcase-notice { padding: 16px; border: 1px solid #90e3b2; }
+.showcase-notice a, .showcase-reference a { text-decoration: underline; }
+.showcase-footer { color: #b4b4b8; border-top: 1px solid #ffffff24; padding: 24px 0; font-size: 13px; }
+@media (max-width: 760px) {
+  .showcase-header { gap: 12px; flex-wrap: wrap; }
+  .showcase-tag { width: 100%; margin-left: 0; }
+  .showcase-intro { padding: 36px 0; }
+  .showcase-reference { grid-template-columns: 1fr; gap: 16px; }
+}

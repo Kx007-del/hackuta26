@@ -1,4 +1,8 @@
-# Current roadmap — H26-3
+# Current roadmap — Fortnite-only showcase
+
+Current scope supersedes historical milestones below: one supplied Fortnite recording, one matching original hillside, cone present from spawn/reset, third-person camera and Fortnite-style controls. See docs/showcase/CLEANUP.md and docs/showcase/CODEX-3-NEXT-PROMPT.md. Cleanup is separate from unfinished scene recreation. Automation remains stopped; use manual bounded assignments.
+
+## Historical roadmap — H26-3
 
 The human resumed work with five distributed accounts. H26-3-PLAN.md defines the next bounded milestone: hosted build identification/runtime checks and game-specific practice steps/controls. Codex 1 coordinates; Claude 1 reviews the plan, Codex 2 implements backend/runtime changes, Codex 3 implements frontend guidance after access preflight, and Claude 2 independently tests exact commits. The shared hosted baseline is https://hackuta26.onrender.com/. No hosting change is authorized by a task assignment.
 
