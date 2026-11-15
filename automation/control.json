@@ -15,13 +15,35 @@
       "baseSha": "a2d70805685bb1abda5fd3017444ecb6f185a4a7",
       "dependsOn": [],
       "createdAt": "2026-11-15T00:42:26.480Z"
+    },
+    {
+      "id": "36c2f6af-6c96-4c1a-8dc8-7d513e3eeb1a",
+      "role": "codex-2",
+      "kind": "implement",
+      "instruction": "Implement the approved H26-3 backend at this exact SHA, incorporating Claude 1 review F4. Own server/ excluding tests, plus your role handoff folder; follow worktree rules. Export resolveRuntimeConfig(env: Record<string,string|undefined>) from server/runtime-config.ts returning only {host,port,commit}. Trim HOST; nonblank explicit HOST wins, otherwise use 0.0.0.0 only for RENDER === 'true', else 127.0.0.1. Trim PORT; unset/blank/whitespace uses 5173. Otherwise require ASCII digits only and numeric integer 0..65535; invalid values throw a clear startup error without exposing environment contents. Accept trimmed 40-character case-insensitive hexadecimal RENDER_GIT_COMMIT, normalize lowercase; invalid/unset yields null. Bootstrap consumes config. GET /api/health preserves ok:true and service:'run-it-back' and always includes commit. No dependencies/shared-contract edits or hosting/persistence changes. Run available relevant checks and report actual commands/results, exact published implementation SHA and unique task branch. Publish only your bounded task branch; no integration/main merge or deployment.",
+      "baseSha": "a2d70805685bb1abda5fd3017444ecb6f185a4a7",
+      "dependsOn": [
+        "0a31b619-2009-4a21-93cb-43755475ffb2"
+      ],
+      "createdAt": "2026-11-15T00:44:37.673Z"
+    },
+    {
+      "id": "391e1041-7a7e-42ff-a7f0-dc845cbd5cb0",
+      "role": "claude-2",
+      "kind": "test",
+      "instruction": "Using claude-opus-5-5, independently design contract-driven H26-3 tests from actual baseline sources and Claude 1 findings. This assignment is test design only: do not claim implementation validation or add tests against unavailable exports. Report a concrete assertion matrix for runtime defaults, exact RENDER matching, trimmed HOST, trimmed digits-only PORT 0..65535, blank default, malformed rejection, trimmed case-insensitive 40-hex commit normalized lowercase/null, and health compatibility/no environment leakage. Design seven-preset guide assertions against real mechanics and controls: movement/aim/C/F/R; rooftop jump and airborne net spins without align assist; ramp build/takeoff; wall B/G opening; precision grounded/still; tactical turn wording/no jump; dash covered left-crate start, X then settle/fire. Guide accepts valid ChallengeConfig only; malformed inputs are outside its contract. Include config/replay precedence, honest player-guided clip wording, provenance and regression coverage. Identify automated versus desktop browser checks. Follow role isolation, record your role handoff, and report exact inspected SHA and actual inspection commands. Subsequent executable tests must use actual published implementation SHA(s); no merge or deployment.",
+      "baseSha": "a2d70805685bb1abda5fd3017444ecb6f185a4a7",
+      "dependsOn": [
+        "0a31b619-2009-4a21-93cb-43755475ffb2"
+      ],
+      "createdAt": "2026-11-15T00:44:37.673Z"
     }
   ],
   "humanResume": {
     "instruction": "User explicitly resumed hackathon work in GitHub under Codex 1 coordination and requested monitoring of every agent.",
     "at": "2026-11-15T00:41:46.482Z"
   },
-  "summary": "Assign only Claude 1 the initial independent plan/source review. Backend and test-design assignments follow review; frontend implementation remains gated on desktop verification of Codex 3 access. No tools invoked or repository changes made.",
+  "summary": "Claude 1 reports proceed with corrections at a2d70805685bb1abda5fd3017444ecb6f185a4a7; static inspection only. Freeze runtime rules below. Frontend must include actual movement/aim controls, mechanic-specific sequences, tactical turn wording and replay.config precedence; practiceGuide accepts valid ChallengeConfig only. Codex 3 implementation remains gated on desktop accessReadyRoles verification. Desktop must perform candidate browser checks and confirm Render source/settings before any integration publication; no merge or deployment authorized.",
   "previousRunId": "f49ce0ee-c384-44f1-871d-5c9bb9e25fcb",
   "cycleApproval": "User explicitly instructed Codex 1 to start hackathon work in GitHub and monitor/control all five agents; preserve onboarding history and begin a bounded development cycle.",
   "accessReadyRoles": [
