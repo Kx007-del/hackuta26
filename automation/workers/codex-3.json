@@ -6,20 +6,5 @@
     "machine": "HpPavilion"
   },
   "status": "paused",
-  "results": {
-    "f97732f3-fbed-4b8a-852f-1adc3cead87b": {
-      "status": "failed",
-      "finishedAt": "2026-11-15T00:12:37.400Z",
-      "error": "Agent reported a blocker; inspect local reply/logs"
-    },
-    "082a7063-2329-4d38-8324-7abc800f4a26": {
-      "status": "done",
-      "finishedAt": "2026-11-15T00:30:14.451Z",
-      "baseSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
-      "headSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
-      "branch": null,
-      "model": "assigned Codex profile",
-      "text": "TEAMRELAY-H26 | codex-3 | transport reply received | waiting for human resume."
-    }
-  }
+  "results": {}
 }
