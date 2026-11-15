@@ -300,6 +300,12 @@ export function rayHitsTarget(origin: THREE.Vector3, direction: THREE.Vector3, b
   return true;
 }
 
+/** Matches the sun disc drawn in the sky shader. */
+const SUN_DIRECTION = new THREE.Vector3(-.65, .47, .50).normalize();
+const SUN_DISTANCE = 60;
+/** Half-size of the shadow box around the player (metres). */
+const SHADOW_EXTENT = 26;
+
 function randomSequence(seed: number) {
   return () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
 }
@@ -365,16 +371,32 @@ export function makeHillsideScene() {
     `,
     fragmentShader: `
       varying vec3 vSky;
+      // Cheap value noise for soft, drifting cloud banks.
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float fbm(vec2 p) { float v = 0.0, a = .5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.07; a *= .5; } return v; }
       void main() {
         vec3 ray = normalize(vSky);
         float height = pow(clamp(ray.y, 0.0, 1.0), 0.49);
         vec3 tint = mix(vec3(.035,.43,.63), vec3(.009,.23,.49), height);
         vec3 sun = normalize(vec3(-.65,.47,.50));
         float halo = max(dot(ray, sun), 0.0);
-        tint += vec3(.04,.12,.13) * pow(halo, 9.0);
-        float bands = sin(ray.x * 17.0 + ray.z * 9.0) * sin(ray.z * 19.0 - ray.x * 8.0);
-        float wisps = smoothstep(.24,.84,bands) * smoothstep(.09,.21,ray.y) * (1.0-smoothstep(.26,.49,ray.y));
-        tint = mix(tint, vec3(.23,.53,.64), wisps * .26);
+        // Warm glow low on the horizon toward the sun, a soft halo and a bright sun disc.
+        float horizon = 1.0 - smoothstep(0.0, .32, abs(ray.y - .04));
+        tint += vec3(.33,.21,.10) * horizon * pow(halo, 3.0) * .55;
+        tint += vec3(.10,.16,.14) * pow(halo, 9.0);
+        tint += vec3(1.0,.86,.62) * smoothstep(.9985, .9993, halo) * 1.6;
+        tint += vec3(.55,.42,.25) * pow(halo, 220.0) * .8;
+        // Cloud banks projected onto a dome, thinning toward the zenith and the horizon.
+        vec2 cloudUv = ray.xz / max(ray.y + .18, .05) * 1.4;
+        float cloud = smoothstep(.52, .78, fbm(cloudUv + vec2(3.1, 7.4)));
+        cloud *= smoothstep(.02, .14, ray.y) * (1.0 - smoothstep(.55, .9, ray.y));
+        vec3 cloudColour = mix(vec3(.30,.56,.66), vec3(.86,.72,.56), pow(halo, 4.0));
+        tint = mix(tint, cloudColour, cloud * .55);
         gl_FragColor = vec4(tint, 1.0);
         #include <colorspace_fragment>
       }
@@ -383,10 +405,19 @@ export function makeHillsideScene() {
   scene.add(new THREE.Mesh(geometry(new THREE.SphereGeometry(175, 32, 16)), sky));
   scene.background = new THREE.Color('#1b9ebd');
   scene.fog = new THREE.FogExp2('#174d61', .013);
-  scene.add(new THREE.HemisphereLight(0xa8e9ff, 0x244458, 1.9));
-  const sun = new THREE.DirectionalLight(0x9adafa, .8);
-  sun.position.set(-38, 45, 26);
-  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xa8e9ff, 0x2a4a50, 1.5));
+  // Warm key light from the sun in the sky shader. It casts soft shadows in a box that follows
+  // the player (updateLighting), so the build, hut, trees and player feel grounded.
+  const sun = new THREE.DirectionalLight('#ffdcb0', 1.9);
+  sun.position.copy(SUN_DIRECTION).multiplyScalar(SUN_DISTANCE);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -SHADOW_EXTENT, right: SHADOW_EXTENT, top: SHADOW_EXTENT, bottom: -SHADOW_EXTENT, near: 1, far: SUN_DISTANCE * 2.2 });
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.bias = -.0004;
+  sun.shadow.normalBias = .035;
+  sun.shadow.radius = 3;
+  scene.add(sun, sun.target);
   const bounce = new THREE.DirectionalLight(0x58c1ff, .35);
   bounce.position.set(38, 8, -25);
   scene.add(bounce);
@@ -407,7 +438,10 @@ export function makeHillsideScene() {
   }
   ground.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   ground.computeVertexNormals();
-  scene.add(new THREE.Mesh(ground, material(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }))));
+  const groundMesh = new THREE.Mesh(ground, material(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })));
+  groundMesh.name = 'Hillside ground';
+  groundMesh.receiveShadow = true;
+  scene.add(groundMesh);
 
   // The ramp, floor and square pyramid are persistent scenery in both review views.
   const structure = new THREE.Group();
@@ -680,13 +714,39 @@ export function makeHillsideScene() {
   band.position.y = 1.2;
   target.add(band);
 
+  // Shadows: solid scenery and the player cast; the ground, build and hut receive. Grass and
+  // flowers stay out of the shadow pass to keep it cheap. (Only the castShadow flag is set on
+  // the player; the character model itself is unchanged.)
+  const cast = (root: THREE.Object3D, receive: boolean) => root.traverse(o => {
+    if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = receive; }
+  });
+  cast(structure, true);
+  cast(hut, true);
+  cast(target, false);
+  cast(character.root, false);
+  // Instanced trees: trunks, firs and canopies (the last three batches).
+  for (const mesh of instances.slice(-3)) mesh.castShadow = true;
+
+  const sunFocus = new THREE.Vector3();
+  /** Keep the shadow box centred on the player so nearby shadows stay sharp. */
+  function updateLighting(x: number, y: number, z: number) {
+    // Snap to shadow-map texels so shadow edges don't shimmer while running.
+    const texel = (SHADOW_EXTENT * 2) / sun.shadow.mapSize.x;
+    sunFocus.set(Math.round(x / texel) * texel, y, Math.round(z / texel) * texel);
+    sun.target.position.copy(sunFocus);
+    sun.position.copy(sunFocus).addScaledVector(SUN_DIRECTION, SUN_DISTANCE);
+    sun.target.updateMatrixWorld();
+  }
+  updateLighting(SPAWN_POINT.x, spawnHeight, SPAWN_POINT.z);
+
   return {
-    scene, mannequin, character, playerShadow, ridgePoint, cone, target,
+    scene, mannequin, character, playerShadow, ridgePoint, cone, target, sun, updateLighting,
     dispose() {
       for(const mesh of instances) mesh.dispose();
       for(const value of geometries) value.dispose();
       for(const value of materials) value.dispose();
       woodGrain.dispose();
+      sun.dispose();
       character.dispose();
       scene.clear();
     },
