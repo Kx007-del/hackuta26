@@ -23,6 +23,8 @@ test('public entry uses the fixed Fortnite showcase rather than the legacy app',
   const html = renderToStaticMarkup(createElement(FortniteShowcase, { search: '' }));
   assert.match(html, /FORTNITE SHOWCASE/);
   assert.match(html, /03 \/ COMMUNITY/);
+  assert.match(html, /Ridgeline Rae/);
+  assert.doesNotMatch(html, /community-example-tag|Example players/);
   assert.match(html, /role="tablist" aria-label="Leaderboard"/);
   assert.match(html, /START PRACTICE/);
   assert.match(html, /<video[^>]*controls/);

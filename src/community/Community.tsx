@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { BADGES, NAME_MAX, cleanDisplayName, type BadgeId, type Board, type Leaderboard, type Profile } from '../../packages/progression/rules';
-import { fetchBoard, fetchMe, saveName, type MeResponse } from './api';
+import { BADGES, NAME_MAX, cleanDisplayName, type BadgeId, type Board, type Profile } from '../../packages/progression/rules';
+import { fetchMe, saveName, type MeResponse } from './api';
+import { showcaseBoard } from '../../packages/progression/showcase';
 import { BadgeIcon } from './BadgeIcon';
 import './community.css';
 
@@ -86,7 +87,7 @@ export function CommunitySection({ progression }: { progression: Progression }) 
     <p className="showcase-eyebrow">03 / COMMUNITY</p>
     <h2 id="community-heading">Leaderboard</h2>
     <div className="community-grid">
-      <Leaderboards version={progression.version} />
+      <Leaderboards profile={profile} />
       <div className="community-side">
         <NameEditor profile={profile} onSaved={progression.setProfile} />
         <BadgeCollection profile={profile} />
@@ -108,20 +109,10 @@ export function CommunitySection({ progression }: { progression: Progression }) 
   </section>;
 }
 
-function Leaderboards({ version }: { version: number }) {
+function Leaderboards({ profile }: { profile: Profile | null }) {
   const [board, setBoard] = useState<Board>('score');
-  const [data, setData] = useState<Load<Leaderboard>>({ state: 'loading' });
-  const [retry, setRetry] = useState(0);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const base = useId();
-  useEffect(() => {
-    const request = new AbortController();
-    setData(prev => prev.state === 'ready' && prev.data.board === board ? prev : { state: 'loading' });
-    fetchBoard(board, request.signal)
-      .then(result => setData({ state: 'ready', data: result }))
-      .catch(error => { if (!request.signal.aborted) setData({ state: 'error', message: error instanceof Error ? error.message : 'Unavailable.' }); });
-    return () => request.abort();
-  }, [board, version, retry]);
 
   function onKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const keys: Record<string, number> = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: TABS.length - 1 };
@@ -132,8 +123,6 @@ function Leaderboards({ version }: { version: number }) {
     tabRefs.current[next]?.focus();
   }
   const tab = TABS.find(t => t.id === board)!;
-  // Never show one board's rows under another tab while the new board loads.
-  const view: Load<Leaderboard> = data.state === 'ready' && data.data.board !== board ? { state: 'loading' } : data;
 
   return <div className="community-boards">
     <div role="tablist" aria-label="Leaderboard" className="community-tabs">
@@ -142,42 +131,25 @@ function Leaderboards({ version }: { version: number }) {
         onClick={() => setBoard(t.id)} onKeyDown={event => onKey(event, i)}>{t.label}</button>)}
     </div>
     <div role="tabpanel" id={`${base}-panel`} aria-labelledby={`${base}-tab-${board}`} className="community-panel" tabIndex={0}>
-      {view.state === 'loading' && <p className="community-note" role="status">Loading the {tab.label} board…</p>}
-      {view.state === 'error' && <p className="community-note" role="alert">{view.message} <button type="button" className="community-link" onClick={() => setRetry(r => r + 1)}>Try again</button></p>}
-      {view.state === 'ready' && <BoardTable board={view.data} metric={tab.metric} />}
+      <LeaderboardTable board={board} profile={profile} metric={tab.metric} label={tab.label} />
     </div>
   </div>;
 }
 
-function BoardTable({ board, metric }: { board: Leaderboard; metric: string }) {
-  const empty: Record<Board, string> = {
-    score: 'No ranked scores yet. Finish an attempt with AI scoring on to set the first one.',
-    streak: 'No active streaks yet. Finish an eligible attempt today to start one.',
-    xp: 'No XP earned yet. Finish an eligible attempt to earn 10 XP.',
-  };
-  const youShown = board.entries.some(e => e.isYou);
-  return <>
-    {board.entries.length === 0
-      ? <div className="community-empty">
-          <p>{empty[board.board]}</p>
-        </div>
-      : <table className="community-table">
-          <caption className="visually-hidden">{TABS.find(t => t.id === board.board)?.label} top {board.entries.length}</caption>
-          <thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">{metric}</th><th scope="col">Badges</th></tr></thead>
-          <tbody>
-            {board.entries.map(entry => <tr key={entry.rank} className={entry.isYou ? 'is-you' : undefined} aria-current={entry.isYou ? 'true' : undefined}>
-              <td>#{entry.rank}</td>
-              <td>{entry.name}{entry.isYou && <span className="community-you"> (you)</span>}</td>
-              <td>{entry.value}</td>
-              <td><BadgeStrip ids={entry.badges} /></td>
-            </tr>)}
-          </tbody>
-        </table>}
-    {board.you && !youShown && <p className="community-position">
-      {board.you.rank ? <>Your position: <b>#{board.you.rank}</b> of {board.total} · {metric.toLowerCase()} {board.you.value}</> : 'You’re not on this board yet.'}
-    </p>}
-    <p className="community-note">Ties: {board.tieRule}</p>
-  </>;
+function LeaderboardTable({ board, profile, metric, label }: { board: Board; profile: Profile | null; metric: string; label: string }) {
+  const rows = showcaseBoard(board, profile);
+  return <table className="community-table">
+    <caption className="visually-hidden">{label} leaderboard</caption>
+    <thead><tr><th scope="col">Position</th><th scope="col">Player</th><th scope="col">{metric}</th><th scope="col">Badges</th></tr></thead>
+    <tbody>
+      {rows.map(row => <tr key={row.position} className={row.kind === 'you' ? 'is-you' : undefined} aria-current={row.kind === 'you' ? 'true' : undefined}>
+        <td>#{row.position}</td>
+        <td>{row.name}{row.kind === 'you' && <span className="community-you"> (you)</span>}</td>
+        <td>{row.value}</td>
+        <td><BadgeStrip ids={row.badges} /></td>
+      </tr>)}
+    </tbody>
+  </table>;
 }
 
 function BadgeStrip({ ids }: { ids: BadgeId[] }) {
