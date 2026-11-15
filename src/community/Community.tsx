@@ -128,6 +128,8 @@ function Leaderboards({ version }: { version: number }) {
     tabRefs.current[next]?.focus();
   }
   const tab = TABS.find(t => t.id === board)!;
+  // Never show one board's rows under another tab while the new board loads.
+  const view: Load<Leaderboard> = data.state === 'ready' && data.data.board !== board ? { state: 'loading' } : data;
 
   return <div className="community-boards">
     <div role="tablist" aria-label="Leaderboards" className="community-tabs">
@@ -136,9 +138,9 @@ function Leaderboards({ version }: { version: number }) {
         onClick={() => setBoard(t.id)} onKeyDown={event => onKey(event, i)}>{t.label}</button>)}
     </div>
     <div role="tabpanel" id={`${base}-panel`} aria-labelledby={`${base}-tab-${board}`} className="community-panel" tabIndex={0}>
-      {data.state === 'loading' && <p className="community-note" role="status">Loading the {tab.label} board…</p>}
-      {data.state === 'error' && <p className="community-note" role="alert">{data.message} <button type="button" className="community-link" onClick={() => setRetry(r => r + 1)}>Try again</button></p>}
-      {data.state === 'ready' && <BoardTable board={data.data} metric={tab.metric} />}
+      {view.state === 'loading' && <p className="community-note" role="status">Loading the {tab.label} board…</p>}
+      {view.state === 'error' && <p className="community-note" role="alert">{view.message} <button type="button" className="community-link" onClick={() => setRetry(r => r + 1)}>Try again</button></p>}
+      {view.state === 'ready' && <BoardTable board={view.data} metric={tab.metric} />}
     </div>
   </div>;
 }

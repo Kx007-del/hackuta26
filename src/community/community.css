@@ -19,7 +19,7 @@
 .progress-stats dd small { display: block; font-family: Source; font-size: 12px; color: #ffffffb3; }
 
 .showcase-score__progress { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid #ffffff24; font-size: 14px; }
-.showcase-score__progress b { color: #e4002b; }
+.showcase-score__progress b { color: #ffffff; }
 .showcase-score__progress.is-muted { color: #ffffffb3; }
 
 .showcase-community { border-top: 1px solid #ffffff24; padding: 40px 0 60px; }
@@ -73,5 +73,6 @@
   .progress-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .community-table { font-size: 14px; }
   .community-table td, .community-table th { padding: 8px 5px; }
-  .community-table th:last-child, .community-table td:last-child { display: none; }
+  .community-table td:first-child { width: 40px; }
+  .badge-strip svg { width: 18px; height: 18px; }
 }
