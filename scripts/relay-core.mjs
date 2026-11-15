@@ -5,6 +5,12 @@ export const WORKERS = ROLES.slice(1);
 export const KINDS = ['onboard', 'implement', 'test', 'review'];
 export const shaPattern = /^[a-f0-9]{40}$/;
 export function checkRole(role) { if (!ROLES.includes(role)) throw new Error('Unknown role'); return role; }
+export function workerGoal(control) { return control.productGoal ?? control.goal; }
+export function heartbeatUpdate(old, session, extra = {}, time = Date.now()) {
+  if (old?.lease?.session !== session) throw new Error('Worker lease lost');
+  if (time - Date.parse(old.lease.at) < 60000 && Object.entries(extra).every(([key, value]) => old[key] === value)) return old;
+  return { ...old, ...extra, lease: { ...old.lease, at: new Date(time).toISOString() } };
+}
 export function initialControl(baseSha) {
   if (!shaPattern.test(baseSha)) throw new Error('Invalid base SHA');
   return { version: 1, runId: randomUUID(), status: 'paused', goal: '', baseSha,
