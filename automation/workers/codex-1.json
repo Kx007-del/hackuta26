@@ -1,6 +1,10 @@
 {
   "role": "codex-1",
-  "lease": null,
-  "status": "offline",
+  "lease": {
+    "session": "9820b258-94c1-46f3-9ccb-3fe11f3872df",
+    "at": "2026-11-15T00:57:01.052Z",
+    "machine": "KrunalMadhani"
+  },
+  "status": "waiting",
   "results": {}
 }
