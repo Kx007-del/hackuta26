@@ -163,10 +163,15 @@ test('showcase is Fortnite-only: no GameArena, legacy arena or relay code is loa
   assert.doesNotMatch(showcase, /GameArena|PracticeGuide|ChallengeBuilder|rooftop|tactical|relay/i);
 });
 
-test('preview UI: only a small Reset control; Esc releases pointer lock; cleanup releases it', () => {
+test('preview UI: only small Reset and Full screen controls; Esc releases pointer lock; cleanup releases it', () => {
   const preview = src('../packages/gameplay/HillsidePreview.tsx');
   const buttons = preview.match(/<button\b/g) ?? [];
-  assert.equal(buttons.length, 1, 'only the Reset button should remain');
+  assert.equal(buttons.length, 2, 'only Reset and Full screen remain');
+  assert.ok(preview.includes('onClick={toggleFullscreen}'));
+  assert.ok(preview.includes('el.requestFullscreen?.()'));
+  assert.ok(preview.includes('document.exitFullscreen()'));
+  assert.ok(preview.includes("removeEventListener('fullscreenchange', changed)"));
+  assert.ok(src('../src/fortnite-showcase.css').includes('.hillside-stage:fullscreen'));
   assert.match(preview, /className="hillside-reset" onClick=\{\(\) => controls\.current\?\.reset\(\)\}/);
   assert.doesNotMatch(preview, /Aim up the hill|Ramp and cone|type="checkbox"/);
   assert.match(preview, /event\.code === 'Escape' && document\.pointerLockElement === canvas\)\s*\{\s*document\.exitPointerLock\(\)/);

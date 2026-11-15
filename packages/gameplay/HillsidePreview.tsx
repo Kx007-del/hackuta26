@@ -19,6 +19,22 @@ export default function HillsidePreview() {
   const mount = useRef<HTMLDivElement>(null);
   const controls = useRef<PreviewControls | null>(null);
   const marker = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    const changed = () => setFullscreen(document.fullscreenElement === stage.current);
+    document.addEventListener('fullscreenchange', changed);
+    return () => document.removeEventListener('fullscreenchange', changed);
+  }, []);
+
+  function toggleFullscreen() {
+    const el = stage.current;
+    if (!el) return;
+    if (document.fullscreenElement === el) void document.exitFullscreen().catch(() => {});
+    else void el.requestFullscreen?.().catch(() => {});
+    el.querySelector('canvas')?.focus({ preventScroll: true });
+  }
   const [captured, setCaptured] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -273,14 +289,17 @@ export default function HillsidePreview() {
     : 'Click the scene to aim · WASD move · Space jump · R reset');
 
   return <div className="hillside-preview">
-    <div className="hillside-stage">
+    <div className="hillside-stage" ref={stage}>
       <div className="hillside-canvas" ref={mount} />
       {!error && <span key={shot?.id ?? 0} className={`hillside-reticle${shot ? ' is-firing' : ''}`} aria-hidden="true"><i/><i/><i/><i/></span>}
       {!error && shot && <p key={`shot-${shot.id}`} className={`hillside-result${shot.hit ? ' is-hit' : ''}`} role="status">
         {shot.hit ? <>ELIMINATED <small>{Math.round(shot.distance)} m{shot.airborne ? ' · IN THE AIR' : ''}</small></> : 'MISS'}
       </p>}
       {!error && <div ref={marker} className="hillside-marker" aria-hidden="true"><i/><span/></div>}
-      {!error && <button type="button" className="hillside-reset" onClick={() => controls.current?.reset()} aria-label="Reset position (R)">↺ Reset</button>}
+      {!error && <div className="hillside-actions">
+        <button type="button" className="hillside-reset" onClick={() => controls.current?.reset()} aria-label="Reset position (R)">↺ Reset</button>
+        <button type="button" className="hillside-reset hillside-fullscreen" onClick={toggleFullscreen} aria-pressed={fullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}>{fullscreen ? '✕ Exit' : '⛶ Full screen'}</button>
+      </div>}
       {!error && <p className="hillside-hint" id="hillside-controls">{hint}</p>}
       {error && <p className="hillside-error" role="alert">{error}</p>}
     </div>

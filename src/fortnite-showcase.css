@@ -36,7 +36,10 @@
 .hillside-marker[data-offscreen="true"] { transform: translate(-50%, -50%); }
 .hillside-marker[data-offscreen="true"] i { width: 0; height: 0; background: none; border: 9px solid transparent; border-left: 14px solid #ff6b35; box-shadow: none; transform: rotate(var(--arrow)); }
 .hillside-marker[data-down="true"] { color: #f2fffc; opacity: .7; }
-.hillside-reset { position: absolute; z-index: 2; top: 10px; right: 10px; padding: 5px 10px; border: 1px solid #ffffff4d; border-radius: 4px; background: #0d1d20b3; color: #f2fffc; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .03em; cursor: pointer; }
+.hillside-actions { position: absolute; z-index: 2; top: 10px; right: 10px; display: flex; gap: 6px; }
+.hillside-stage:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; border: 0; border-radius: 0; }
+.hillside-stage:fullscreen .hillside-hint { font-size: 14px; }
+.hillside-reset { padding: 5px 10px; border: 1px solid #ffffff4d; border-radius: 4px; background: #0d1d20b3; color: #f2fffc; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .03em; cursor: pointer; }
 .hillside-reset:hover { border-color: #90e3b2; }
 .hillside-reset:focus-visible { outline: 2px solid #90e3b2; outline-offset: 2px; }
 .hillside-hint { position: absolute; z-index: 1; left: 12px; right: 90px; bottom: 9px; margin: 0; color: #e4f4f1; font-size: 12px; text-shadow: 0 1px 3px #000; pointer-events: none; }
