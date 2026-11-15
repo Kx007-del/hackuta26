@@ -1,0 +1,34 @@
+{
+  "video": {
+    "currentTime": 3.103633,
+    "duration": 3.103633,
+    "ended": true,
+    "paused": true,
+    "readyState": 4,
+    "src": "https://hackuta26.onrender.com/showcase/fortnite-reference.mp4",
+    "videoWidth": 1920
+  },
+  "canvas": {
+    "canvas": {
+      "height": 494,
+      "width": 883
+    },
+    "height": 309.34375,
+    "viewport": {
+      "height": 1846,
+      "width": 615
+    },
+    "width": 551.5,
+    "x": 31.75,
+    "y": 1203.6953125
+  },
+  "pointerCapture": {
+    "locked": null,
+    "status": "Mouse look is unavailable in this browser context. You can still walk and use both review views."
+  },
+  "escapeWithoutCapture": {
+    "locked": null,
+    "status": "Mouse look is unavailable in this browser context. You can still walk and use both review views."
+  },
+  "logs": []
+}

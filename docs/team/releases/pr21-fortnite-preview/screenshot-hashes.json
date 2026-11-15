@@ -1,0 +1,13 @@
+{
+  "sha256": {
+    "07-mouse-capture-fallback.jpg": "ea662eaa7b89de637ce024f24122dae396113560405cf1b94df6de32a0b4d29b",
+    "01-ramp-and-cone.jpg": "c37ccedc1912d43cbad0ca211cb88682449fd7025019fe13ce7dc5a01a92d308",
+    "03-reset-with-cone.jpg": "c37ccedc1912d43cbad0ca211cb88682449fd7025019fe13ce7dc5a01a92d308",
+    "04-aim-up-the-hill.jpg": "c0f1f3bcdf81506c054fc99f66b603803ed11ec8335321df03ef2251edba38ca",
+    "02-after-walking.jpg": "b36d2cf75cd86491d2b8bafe51e6b011d62e392bdec3c5d910b57333d8794639",
+    "05-keyboard-look-off.jpg": "9a3e01a27bfe0e9f598a98ffaba3ae2edfdb8f7020d5fa06f7e6725fc390411e",
+    "06-keyboard-look-on.jpg": "3f9d6895774a10bd617538aa21842f4da8cc3572a6e1250ae0e1b0b9f312a193",
+    "08-final-reset.jpg": "f0ea17793761f8bf05dca02393462780babba5239137df8543ff23963e26ff70"
+  },
+  "resetAfterWalkingMatchesInitialScreenshotExactly": true
+}
