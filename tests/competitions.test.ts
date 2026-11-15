@@ -269,3 +269,18 @@ test('separate processes retry one reservation without double-consuming its atte
     assert.equal(f.store.entrant(a.id, e.id).usedAttempts, 1);
   } finally { await f.close(); }
 });
+
+test('featured sample event: a complete sponsored event that is clearly fictional and cannot be entered', async () => {
+  const { competitionExamples } = await import('../packages/competitions/examples');
+  const events = competitionExamples();
+  const featured = events.filter(e => (e as { featured?: boolean }).featured);
+  assert.equal(featured.length, 1);
+  const e = featured[0] as Record<string, unknown> & { prizes: unknown[]; schedule: unknown[]; rules: unknown[]; leaderboard: unknown[] };
+  assert.equal(e.example, true); assert.equal(e.readOnly, true);
+  assert.match(String(e.organizer), /fictional/i); assert.match(String(e.sponsor), /fictional/i);
+  assert.match(String(e.prizeDescription), /illustration only/i);
+  assert.match(String(e.code), /^EXAMPLE-/);
+  assert.ok(e.prizes.length && e.schedule.length && e.rules.length && e.leaderboard.length >= 8);
+  const ui = (await import('node:fs')).readFileSync(new URL('../src/competitions/Events.tsx', import.meta.url), 'utf8');
+  assert.match(ui, /SAMPLE EVENT · fictional company, players and prizes · view only/);
+});

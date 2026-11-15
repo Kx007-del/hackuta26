@@ -33,3 +33,19 @@
 /* Legacy arena CSS hides generic nav links on narrow screens; keep all four tabs visible. */
 .showcase-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:18px; }
 .competition-nav a { display:block; }
+
+/* Featured sample event (fictional sponsor) */
+.event-featured { border-color:#e4002b80; background:linear-gradient(160deg,#1c0d10 0%,#111 45%); }
+.event-featured h3 { font-family:Anton; font-size:clamp(28px,4vw,44px); letter-spacing:.02em; margin:6px 0; }
+.event-featured h4 { margin:0 0 8px; font-size:15px; letter-spacing:.06em; text-transform:uppercase; }
+.event-sample-flag { display:inline-block; margin:0 0 10px; padding:4px 10px; border:1px solid #ffffff4d; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.08em; color:#fff; background:#ffffff14; }
+.event-featured__tagline { font-size:17px; color:#fff; }
+.event-featured__stats { margin:18px 0; }
+.event-featured__status { font-size:18px !important; color:#e4002b; }
+.event-featured__grid { margin:18px 0; }
+.event-featured__list { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+.event-featured__list li { display:grid; grid-template-columns:minmax(5.5em,9.5em) 1fr; gap:12px; }
+.event-featured__list b { color:#fff; }
+.event-featured__fine { font-size:12px; color:#bbb; }
+.event-featured caption { text-align:left; padding:8px 0; font-weight:700; }
+.event-featured__actions { display:flex; flex-wrap:wrap; gap:18px; align-items:center; margin-top:18px; }

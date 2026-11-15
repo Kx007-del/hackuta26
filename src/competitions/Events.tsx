@@ -45,19 +45,54 @@ function EventLink({ event }: { event: CompetitionView }) {
     <p>{event.description}</p><Dates event={event} /><p>{event.attemptLimit} attempts · Curated Fortnite hillside</p>
     <a href={event.publicPath}>View rules and event leaderboard ↗</a></article>;
 }
+type SampleEvent = {
+  id: string; code: string; title: string; organizer: string; description: string; prizeDescription: string;
+  startsAt: string; endsAt: string; featured?: boolean; sponsor?: string; package?: string; tagline?: string;
+  stats?: { entrants: number; attempts: number; countries: number; daysLeft: string };
+  schedule?: { when: string; what: string }[]; rules?: string[]; prizes?: { place: string; reward: string }[];
+  leaderboard: { rank: number; name: string; score: number }[];
+};
+const day = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+/** A full sponsored event from a fictional company, shown so visitors can see what a real one looks like. */
+function FeaturedSample({ event }: { event: SampleEvent }) {
+  return <article className="event-card event-featured" aria-labelledby={`${event.id}-title`}>
+    <p className="event-sample-flag">SAMPLE EVENT · fictional company, players and prizes · view only</p>
+    <p className="showcase-eyebrow">{event.package} event · presented by {event.sponsor}</p>
+    <h3 id={`${event.id}-title`}>{event.title}</h3>
+    {event.tagline && <p className="event-featured__tagline">{event.tagline}</p>}
+    <p>Hosted by {event.organizer} · {day(event.startsAt)} – {day(event.endsAt)} · code {event.code}</p>
+    {event.stats && <dl className="event-metrics event-featured__stats">
+      <div><dt>Entrants</dt><dd>{event.stats.entrants.toLocaleString('en-US')}</dd></div>
+      <div><dt>Attempts</dt><dd>{event.stats.attempts.toLocaleString('en-US')}</dd></div>
+      <div><dt>Countries</dt><dd>{event.stats.countries}</dd></div>
+      <div><dt>Status</dt><dd className="event-featured__status">{event.stats.daysLeft}</dd></div>
+    </dl>}
+    <p>{event.description}</p>
+    <div className="event-grid event-featured__grid">
+      {event.prizes && <section><h4>Prize pool <small>(example)</small></h4><ul className="event-featured__list">{event.prizes.map(p => <li key={p.place}><b>{p.place}</b> {p.reward}</li>)}</ul><p className="event-featured__fine">{event.prizeDescription}</p></section>}
+      {event.schedule && <section><h4>Schedule</h4><ul className="event-featured__list">{event.schedule.map(s => <li key={s.when}><b>{s.when}</b> {s.what}</li>)}</ul></section>}
+    </div>
+    {event.rules && <details><summary>Official rules</summary><ol>{event.rules.map(r => <li key={r}>{r}</li>)}</ol></details>}
+    <div className="event-table"><table><caption>Qualifier standings (sample)</caption><thead><tr><th>Rank</th><th>Player</th><th>Best score</th></tr></thead>
+      <tbody>{event.leaderboard.map(row => <tr key={row.rank}><td>{row.rank}</td><td>{row.name}</td><td>{row.score}</td></tr>)}</tbody></table></div>
+    <p className="event-featured__actions"><a className="showcase-start" href="/practice">Practice this challenge ↗</a> <a href="/host">Host an event like this ↗</a></p>
+  </article>;
+}
 export function EventsBrowse() {
   const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [code, setCode] = useState(''), [error, setError] = useState('');
   const list = useRemote<{ events: CompetitionView[] }>(`/api/competitions?search=${encodeURIComponent(query)}`);
-  const examples = useRemote<{ events: { id: string; title: string; organizer: string; description: string; prizeDescription: string }[] }>('/api/competition-examples');
+  const examples = useRemote<{ events: SampleEvent[] }>('/api/competition-examples');
+  const featured = examples.data?.events.find(event => event.featured);
   return <section className="showcase-route events-view"><p className="showcase-eyebrow">COMPETE IN YOUR OWN COMMUNITY</p><h1>Join Events</h1>
     <p>Find a competition, review the rules and take your shot. Every event has its own leaderboard.</p><EventDetails />
     <div className="event-grid"><form className="event-card" onSubmit={e => { e.preventDefault(); setQuery(search); }}><label>Search published events<input value={search} maxLength={100} onChange={e => setSearch(e.target.value)} /></label><button>Search</button></form>
     <form className="event-card" onSubmit={e => { e.preventDefault(); const parsed = eventCode(code); if (!parsed) { setError('Enter a valid event code or /events/ link.'); return; } window.history.pushState(null, '', `/events/${parsed}`); window.dispatchEvent(new PopStateEvent('popstate')); }}>
       <label>Event code or link<input value={code} maxLength={500} onChange={e => setCode(e.target.value)} /></label><button>Open event</button>{error && <p role="alert">{error}</p>}</form></div>
+    {featured && <><h2>Featured event</h2><FeaturedSample event={featured} /></>}
     <h2>Upcoming &amp; live</h2><BusyOrError load={list} />{list.data && !list.data.events.length && <p>No matching published events yet. <a href="/host">Create the first event</a>.</p>}
     <div className="event-grid">{list.data?.events.map(event => <EventLink key={event.id} event={event} />)}</div>
     <details className="event-examples"><summary>Sample events — view only</summary><BusyOrError load={examples} />
-      {examples.data?.events.map(event => <article className="event-card" key={event.id}><b>SAMPLE EVENT</b><h3>{event.title}</h3><p>{event.organizer} — fictional organizer.</p><p>{event.description}</p><p>{event.prizeDescription}</p></article>)}</details>
+      {examples.data?.events.filter(event => !event.featured).map(event => <article className="event-card" key={event.id}><b>SAMPLE EVENT</b><h3>{event.title}</h3><p>{event.organizer} — fictional organizer.</p><p>{event.description}</p><p>{event.prizeDescription}</p></article>)}</details>
   </section>;
 }
 export function PublicEvent({ code }: { code: string }) {
