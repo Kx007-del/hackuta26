@@ -8,6 +8,7 @@ import { EventsBrowse, PublicEvent, HostHome, HostManager } from './competitions
 import { activeTab } from './competitions/api';
 import AccountPage, { AccountLink } from './auth/Account';
 import BadgeCollection, { CommunityNav } from './community/BadgeCollection';
+import HostDemo from './competitions/HostDemo';
 
 const HillsidePreview = lazy(() => import('../packages/gameplay/HillsidePreview'));
 const PRACTICE = '/practice';
@@ -35,7 +36,7 @@ export default function FortniteShowcase({
   const step = accountMode ? accountMode === 'signup' ? 'Create account' : accountMode === 'login' ? 'Sign in' : 'Account' : route === PRACTICE ? 'Practice' : route === RESULTS ? 'Results' : activeTab(route);
   const eventMatch = /^\/events\/([A-Za-z0-9-]+)$/.exec(route);
   const hostMatch = /^\/host\/events\/([A-Za-z0-9-]+)$/.exec(route);
-  const known = !!accountMode || ['/', '/play', PRACTICE, RESULTS, '/leaderboards', '/leaderboards/badges', '/events', '/host'].includes(route) || eventMatch || hostMatch;
+  const known = !!accountMode || ['/', '/play', PRACTICE, RESULTS, '/leaderboards', '/leaderboards/badges', '/events', '/host', '/host/demo'].includes(route) || eventMatch || hostMatch;
   function navigate(event: React.MouseEvent) {
     const anchor = (event.target as HTMLElement).closest('a');
     if (!anchor || anchor.target || anchor.hasAttribute('download') || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
@@ -72,7 +73,7 @@ export default function FortniteShowcase({
         <a href={PRACTICE}>02 Practice</a>
         <span aria-current="page">03 Results</span>
       </nav>}
-      {!known ? <section className="showcase-route"><h1>Page not found</h1><a href="/">Back to Play</a></section> : accountMode ? <AccountPage key={accountMode} mode={accountMode} /> : route === '/events' ? <EventsBrowse /> : eventMatch ? <PublicEvent key={eventMatch[1]} code={eventMatch[1]} /> : route === '/host' ? <HostHome /> : hostMatch ? <HostManager key={hostMatch[1]} id={hostMatch[1]} /> : route === '/leaderboards/badges' ? <BadgeCollectionPage /> : route === '/leaderboards' ? <GlobalStandings /> : step === 'Practice' ? <section className="showcase-route" aria-labelledby="practice-heading">
+      {!known ? <section className="showcase-route"><h1>Page not found</h1><a href="/">Back to Play</a></section> : accountMode ? <AccountPage key={accountMode} mode={accountMode} /> : route === '/events' ? <EventsBrowse /> : eventMatch ? <PublicEvent key={eventMatch[1]} code={eventMatch[1]} /> : route === '/host/demo' ? <HostDemo /> : route === '/host' ? <HostHome /> : hostMatch ? <HostManager key={hostMatch[1]} id={hostMatch[1]} /> : route === '/leaderboards/badges' ? <BadgeCollectionPage /> : route === '/leaderboards' ? <GlobalStandings /> : step === 'Practice' ? <section className="showcase-route" aria-labelledby="practice-heading">
         <h1 id="practice-heading">Take the trick shot</h1>
         <p className="showcase-muted">Run up the ramp, jump off the landing and turn toward the target. Take one shot, then exit to view your report.</p>
         {typeof window !== 'undefined' && <Suspense fallback={<p role="status">Loading the practice arena…</p>}>
