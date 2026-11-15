@@ -1,14 +1,11 @@
 import { lazy, Suspense, useState } from 'react';
-import PracticeGuide from '../packages/challenges/PracticeGuide';
-import { isLegacyShowcaseLink, SHOWCASE_CONFIG, SHOWCASE_REFERENCE } from './showcase';
-import type { AttemptResult } from '../shared/contracts';
+import { isLegacyShowcaseLink, SHOWCASE_REFERENCE } from './showcase';
 import './fortnite-showcase.css';
 
-const GameArena = lazy(() => import('../packages/gameplay/GameArena'));
+const HillsidePreview = lazy(() => import('../packages/gameplay/HillsidePreview'));
 
 export default function FortniteShowcase({ search = window.location.search }: { search?: string }) {
   const [playing, setPlaying] = useState(false);
-  const [attempt, setAttempt] = useState<AttemptResult>();
   const [videoError, setVideoError] = useState(false);
   const legacyLink = isLegacyShowcaseLink(search);
 
@@ -22,7 +19,7 @@ export default function FortniteShowcase({ search = window.location.search }: { 
       <section className="showcase-intro">
         <p className="showcase-eyebrow">ONE CLIP. ONE WORLD. YOUR MOMENT.</p>
         <h1>WATCH THE MOMENT.<br/><em>RUN IT BACK.</em></h1>
-        <p>A Fortnite moment becomes a practice challenge. Start with the fixed reference below and explore the current prototype.</p>
+        <p>Watch the Fortnite reference, then explore an original hillside from the same shoulder perspective.</p>
       </section>
       <section className="showcase-reference" aria-labelledby="reference-heading">
         <div>
@@ -40,17 +37,15 @@ export default function FortniteShowcase({ search = window.location.search }: { 
         </div>
       </section>
       <section className="showcase-practice" aria-labelledby="practice-heading">
-        <p className="showcase-eyebrow">02 / PRACTICE PROTOTYPE</p>
-        <h2 id="practice-heading">ENTER THE BUILDYARD</h2>
-        <p>The existing Fortnite-inspired arena is playable. The reference-matched hillside, preplaced cone, and third-person controls are still being built.</p>
-        <p className="showcase-muted">Prototype rules currently require building a ramp and firing while airborne. These will change to match the reference.</p>
-        {!playing ? <button type="button" className="showcase-start" onClick={() => setPlaying(true)}>START PRACTICE ↗</button> : <>
-          <PracticeGuide config={SHOWCASE_CONFIG} isReplay={false}/>
-          <Suspense fallback={<p role="status">Loading practice arena…</p>}>
-            <GameArena config={SHOWCASE_CONFIG} onComplete={setAttempt}/>
-          </Suspense>
-          {attempt && <p role="status">{attempt.success ? 'Prototype challenge complete. Try another run in the arena.' : 'Keep practicing. Use the arena retry control for another run.'}</p>}
-        </>}
+        <p className="showcase-eyebrow">02 / SCENE PREVIEW</p>
+        <h2 id="practice-heading">EXPLORE THE HILLSIDE</h2>
+        <p>Walk the ramp and landing with the cone already in place, or turn toward the ridge. The uphill marker is positioned at an estimated 61 m from spawn.</p>
+        <p className="showcase-muted">Movement and mouse look are available. Firing and scoring are still being built.</p>
+        {!playing
+          ? <button type="button" className="showcase-start" onClick={() => setPlaying(true)}>START PRACTICE PREVIEW ↗</button>
+          : <Suspense fallback={<p role="status">Loading hillside preview…</p>}>
+              <HillsidePreview />
+            </Suspense>}
       </section>
     </main>
     <footer className="showcase-footer">An original, game-inspired practice prototype. Reference footage shown for the showcase. No game affiliation implied.</footer>
