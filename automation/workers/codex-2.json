@@ -1,10 +1,6 @@
 {
   "role": "codex-2",
-  "lease": {
-    "session": "1333a205-b711-4997-ac60-adec2190b817",
-    "at": "2026-11-15T00:45:22.124Z",
-    "machine": "lib-LDQ92N3JG7"
-  },
+  "lease": null,
   "status": "offline",
   "results": {
     "36c2f6af-6c96-4c1a-8dc8-7d513e3eeb1a": {
