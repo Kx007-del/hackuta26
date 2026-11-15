@@ -4,6 +4,8 @@ import ChallengeBuilder from "../packages/challenges/ChallengeBuilder";
 import PracticeGuide from "../packages/challenges/PracticeGuide";
 import EnvironmentPicker from './components/EnvironmentPicker';
 import ClipWorkbench from './components/ClipWorkbench';
+import Leaderboard from "../packages/leaderboard/Leaderboard";
+import { postLeaderboardAttempt, readOptIn, writeOptIn } from "../packages/leaderboard/client";
 import {
   ApiError,
   createRelay,
@@ -84,6 +86,9 @@ export default function App() {
   });
   const [busy, setBusy] = useState(false);
   const [clipBusy, setClipBusy] = useState(false);
+  const [boardOptIn, setBoardOptIn] = useState(readOptIn);
+  const [boardVersion, setBoardVersion] = useState(0);
+  const [boardStatus, setBoardStatus] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [replayIndex, setReplayIndex] = useState<number | null>(null);
@@ -253,6 +258,26 @@ export default function App() {
     setError(cause instanceof Error ? cause.message : 'The request failed. Please try again.');
   }
 
+  function postToLeaderboard(result: AttemptResult) {
+    const player = name.trim();
+    if (!boardOptIn || !player) return;
+    setBoardStatus('Posting to the leaderboard…');
+    postLeaderboardAttempt(player, result)
+      .then(() => { setBoardStatus(result.success ? 'Landed shot posted to the leaderboard.' : 'Miss posted to the leaderboard. Check the fumbles board.'); setBoardVersion(v => v + 1); })
+      .catch(cause => setBoardStatus(cause instanceof Error ? cause.message : 'Could not post to the leaderboard.'));
+  }
+
+  function toggleBoardOptIn(value: boolean) {
+    setBoardOptIn(value);
+    writeOptIn(value);
+    setBoardStatus(value && !name.trim() ? 'Add your player name to start posting attempts.' : '');
+  }
+
+  function showLeaderboard() {
+    if (screen !== 'home') home();
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+  }
+
   async function publish() {
     if (screen !== 'arena' || clipBusy || activeRequest.current !== null || !attempt || !proven) return;
     if (!name.trim()) {
@@ -390,6 +415,7 @@ export default function App() {
           >
             THE ARENA
           </button>
+          <button onClick={showLeaderboard}>LEADERBOARD</button>
           <a
             href="https://github.com/Kx007-del/hackuta26"
             target="_blank"
@@ -530,6 +556,9 @@ export default function App() {
               ))}
             </div>
           </section>
+          <div className="home-leaderboard">
+            <Leaderboard id="leaderboard" refreshKey={boardVersion} />
+          </div>
           <section className="legacy-strip">
             <div>
               <div className="eyebrow">INSPIRED BY THE TRICKSHOT ERA</div>
@@ -711,6 +740,7 @@ export default function App() {
                     replay={replayAttempt}
                     onReplayEnd={() => setReplayIndex(null)}
                     onComplete={(r) => {
+                      if (attemptGeneration === generation.current) postToLeaderboard(r);
                       if (r.success && attemptGeneration === generation.current && !host && activeRequest.current === null) {
                         setAttempt(r);
                         setNotice(
@@ -769,6 +799,15 @@ export default function App() {
                     placeholder="What does your squad call you?"
                     autoComplete="nickname"
                   />
+                  <label className="board-opt-in">
+                    <input
+                      type="checkbox"
+                      checked={boardOptIn}
+                      onChange={(e) => toggleBoardOptIn(e.target.checked)}
+                    />
+                    <span>Post my attempts, hits and misses, to the public leaderboard under this name</span>
+                  </label>
+                  <p className="board-status" role="status">{boardStatus}</p>
                   {guest ? (
                     <button
                       className="primary full"
@@ -814,6 +853,7 @@ export default function App() {
                         : "Complete this setup to unlock your squad invitation."}
                   </p>
                 </section>
+                <Leaderboard refreshKey={boardVersion} arenaId={config.arenaId} compact />
               </aside>
             </div>
           )}
