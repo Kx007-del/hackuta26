@@ -21,22 +21,6 @@ function readReport(): ScoreResponse | null {
   }
 }
 
-/** Copy only the completed report into the new tab's session, then break the opener link. */
-function openReportTab(result: ScoreResponse): boolean {
-  let tab: Window | null = null;
-  try {
-    tab = window.open('', '_blank');
-    if (!tab) return false;
-    tab.sessionStorage.setItem(REPORT_KEY, JSON.stringify(result));
-    tab.opener = null;
-    tab.location.replace(RESULTS);
-    return true;
-  } catch {
-    tab?.close();
-    return false;
-  }
-}
-
 export default function FortniteShowcase({
   search = typeof window === 'undefined' ? '' : window.location.search,
   path = typeof window === 'undefined' ? '/' : window.location.pathname,
@@ -62,13 +46,9 @@ export default function FortniteShowcase({
   }, [step]);
 
   function exitWithReport(result: ScoreResponse) {
-    if (openReportTab(result)) {
-      window.location.replace('/');
-      return;
-    }
-    // Popup restrictions should still let the player finish in the current tab.
     try { window.sessionStorage.setItem(REPORT_KEY, JSON.stringify(result)); } catch { /* The report remains in memory. */ }
-    window.history.replaceState(null, '', RESULTS);
+    window.history.pushState(null, '', RESULTS);
+    setCurrentPath(RESULTS);
     setFallback(result);
     window.scrollTo(0, 0);
   }
