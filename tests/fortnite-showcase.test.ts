@@ -68,3 +68,14 @@ test('four labeled routes render separate views with active navigation and no ho
   assert.match(publicPage, /Join Events/);
   assert.doesNotMatch(publicPage, /<video|Create a draft/);
 });
+
+test('account routes are optional and preserve the public play and event navigation', () => {
+  for (const path of ['/login', '/signup', '/account']) {
+    const html = renderToStaticMarkup(createElement(FortniteShowcase, { path, search: '' }));
+    assert.doesNotMatch(html, /Page not found/);
+    assert.match(html, /YOUR MOMENTS\. YOUR NAME\./);
+    assert.match(html, /Continue as guest/);
+    assert.match(html, /temporary server storage/);
+    for (const label of ['Play', 'Leaderboards', 'Join Events', 'Host an Event']) assert.ok(html.includes(`>${label}</a>`));
+  }
+});
