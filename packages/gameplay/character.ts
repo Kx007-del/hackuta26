@@ -57,8 +57,8 @@ export function makeCharacter(): Character {
   const suit = mat(new THREE.MeshStandardMaterial({ color: '#eceef0', roughness: .82 }));
   const suitShade = mat(new THREE.MeshStandardMaterial({ color: '#d3d8dd', roughness: .85 }));
   const charcoal = mat(new THREE.MeshStandardMaterial({ color: '#2c3138', roughness: .78 }));
-  const pack = mat(new THREE.MeshStandardMaterial({ color: '#7b4cc4', roughness: .74 }));
-  const packDark = mat(new THREE.MeshStandardMaterial({ color: '#4f2f86', roughness: .8 }));
+  const pack = mat(new THREE.MeshStandardMaterial({ color: '#a24bd0', roughness: .74 }));
+  const packDark = mat(new THREE.MeshStandardMaterial({ color: '#6a2b8f', roughness: .8 }));
   const visor = mat(new THREE.MeshStandardMaterial({ color: '#13262d', roughness: .32, emissive: '#0c4d58', emissiveIntensity: .35 }));
 
   const root = new THREE.Group();
@@ -109,9 +109,12 @@ export function makeCharacter(): Character {
     strap.rotation.z = side * .14;
     add(chest, new THREE.Mesh(geo(new THREE.SphereGeometry(.085, 12, 10)), suitShade), side * .25, .15, 0); // shoulder caps
   }
-  add(chest, rbox(pack, .32, .35, .14, .05), 0, .02, .2);
-  add(chest, rbox(packDark, .26, .1, .04, .015), 0, -.05, .28);
-  const roll = add(chest, new THREE.Mesh(geo(new THREE.CylinderGeometry(.06, .06, .3, 12)), packDark), 0, .23, .2);
+  const packGroup = new THREE.Group();
+  packGroup.rotation.y = -STANCE_YAW * .55; // sits square on the back from the camera's view
+  chest.add(packGroup);
+  add(packGroup, rbox(pack, .32, .35, .14, .05), 0, .02, .2);
+  add(packGroup, rbox(packDark, .26, .1, .04, .015), 0, -.05, .28);
+  const roll = add(packGroup, new THREE.Mesh(geo(new THREE.CylinderGeometry(.06, .06, .3, 12)), packDark), 0, .23, .2);
   roll.rotation.z = Math.PI / 2;
 
   const head = new THREE.Group();
@@ -119,14 +122,14 @@ export function makeCharacter(): Character {
   chest.add(head);
   add(head, capsule(charcoal, .07, .05), 0, .02, 0); // neck
   const helmet = new THREE.Group();
-  helmet.position.y = .2;
+  helmet.position.y = .19;
   head.add(helmet);
-  const dome = add(helmet, new THREE.Mesh(geo(new THREE.SphereGeometry(.19, 20, 14)), suit));
-  dome.scale.set(1, 1.04, 1.02);
+  const dome = add(helmet, new THREE.Mesh(geo(new THREE.SphereGeometry(.165, 20, 14)), suit));
+  dome.scale.set(1, 1.1, 1.04);
   // Visor band across the front (cylinder segment facing -Z).
-  add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(.197, .19, .095, 20, 1, true, Math.PI - 1.15, 2.3)), visor), 0, -.005, 0);
+  add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(.172, .166, .085, 20, 1, true, Math.PI - 1.15, 2.3)), visor), 0, -.005, 0);
   for (const side of [-1, 1]) {
-    const ear = add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(.055, .055, .04, 14)), charcoal), side * .19, 0, 0);
+    const ear = add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(.055, .055, .04, 14)), charcoal), side * .165, 0, 0);
     ear.rotation.z = Math.PI / 2;
   }
   add(helmet, rbox(charcoal, .03, .1, .03, .01), -.12, .17, .03); // small antenna
