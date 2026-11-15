@@ -6,17 +6,27 @@ export const RIDGE_HEADING = THREE.MathUtils.degToRad(200);
 export const RIDGE_DISTANCE = 61;
 const TILE = 5;
 const RAMP_START = -3.7;
-const LANDING_START = RAMP_START + TILE;
+const RAMP_RUN = 10.5;
+const LANDING_START = RAMP_START + RAMP_RUN;
 const LANDING_END = LANDING_START + TILE;
 const RAMP_BASE = .54;
 const LANDING = 4.34;
-const CONE_HEIGHT = 2.3;
+const CONE_HEIGHT = 1.84;
+const CONE_HALF = 2.3;
 const CONE_CENTER = LANDING_START + TILE / 2;
 const WALK_LIMIT = 72;
+const PLAYER_RADIUS = .24;
+const STEP_UP = .28;
+const CAMERA_RADIUS = .16;
+const HUT_YAW = -RAMP_HEADING + .13;
+const HUT_SCALE = .76;
+const HUT_HALF_WIDTH = 2.73 * HUT_SCALE;
+const HUT_HALF_DEPTH = 2.45 * HUT_SCALE;
 const rampForward = new THREE.Vector2(Math.sin(RAMP_HEADING), -Math.cos(RAMP_HEADING));
 const rampRight = new THREE.Vector2(Math.cos(RAMP_HEADING), Math.sin(RAMP_HEADING));
 const ridgeForward = new THREE.Vector2(Math.sin(RIDGE_HEADING), -Math.cos(RIDGE_HEADING));
 const ridgeRight = new THREE.Vector2(Math.cos(RIDGE_HEADING), Math.sin(RIDGE_HEADING));
+const hutPosition = rampForward.clone().multiplyScalar(19).addScaledVector(rampRight, 13.2);
 
 function bell(value: number, width: number) {
   return Math.exp(-((value / width) ** 2));
@@ -28,27 +38,64 @@ export function terrainHeight(x: number, z: number) {
   const hill = 14.1 * bell(along - 61, 26) * bell(across + 4, 52);
   const shoulder = 9.6 * bell(along - 40, 34) * bell(across - 33, 21);
   const leftBank = 7.8 * bell(along - 48, 28) * bell(across + 36, 24);
+  const west = x * rampForward.x + z * rampForward.y;
+  const lateral = x * rampRight.x + z * rampRight.y;
+  const westRise = 16.6 * bell(west - 29, 11) * bell(lateral + .5, 26);
   const undulations = Math.sin(x * .14 + z * .09) * .46 + Math.sin(z * .22 - x * .082) * .25;
   const approach = 1.12 * bell(x - rampForward.x * RAMP_START, 4) * bell(z - rampForward.y * RAMP_START, 3.3);
-  const hutBank = 2.4 * bell(x + 30, 15) * bell(z + 7, 11);
-  return hill + shoulder + leftBank + undulations + approach + hutBank - .73;
+  const raw = hill + shoulder + leftBank + westRise + undulations + approach - .73;
+  const toe = 1 - THREE.MathUtils.smoothstep(Math.hypot(west - RAMP_START, Math.max(0, Math.abs(lateral) - 2.65)), .5, 2.3);
+  return THREE.MathUtils.lerp(raw, RAMP_BASE - .04, toe);
 }
 
-function deckHeight(x: number, z: number) {
+function deckHeight(x: number, z: number, padding = 0) {
   const u = x * rampRight.x + z * rampRight.y;
   const v = x * rampForward.x + z * rampForward.y;
-  if (Math.abs(u) > TILE / 2 || v < RAMP_START || v > LANDING_END) return undefined;
-  if (v < LANDING_START) return THREE.MathUtils.lerp(RAMP_BASE, LANDING, (v - RAMP_START) / TILE);
-  return LANDING + CONE_HEIGHT * (1 - Math.max(Math.abs(u), Math.abs(v - CONE_CENTER)) / (TILE / 2));
+  if (Math.abs(u) > TILE / 2 + padding || v < RAMP_START - padding || v > LANDING_END + padding) return undefined;
+  if (v < LANDING_START) return THREE.MathUtils.lerp(RAMP_BASE, LANDING, Math.max(0, v - RAMP_START) / RAMP_RUN);
+  const fromApex = Math.max(Math.abs(u), Math.abs(v - CONE_CENTER));
+  if (fromApex > CONE_HALF) return LANDING;
+  return LANDING + CONE_HEIGHT * (1 - fromApex / CONE_HALF);
 }
 
-export function walkHeight(x: number, z: number, previousHeight: number) {
-  const deck = deckHeight(x, z);
-  const ground = terrainHeight(x, z);
-  return deck !== undefined && deck <= previousHeight + .39 ? Math.max(ground, deck) : ground;
+function overlapsHut(x: number, z: number, padding: number) {
+  const dx = x - hutPosition.x, dz = z - hutPosition.y;
+  const cos = Math.cos(HUT_YAW), sin = Math.sin(HUT_YAW);
+  return Math.abs(cos * dx - sin * dz) < HUT_HALF_WIDTH + padding &&
+    Math.abs(sin * dx + cos * dz) < HUT_HALF_DEPTH + padding;
 }
 
 export const spawnHeight = deckHeight(0, 0)!;
+
+/** A low entry can step onto the toe. Higher edges remain solid from below. */
+export function walkHeight(x: number, z: number, previousHeight: number) {
+  if (!withinWalkArea(x, z) || overlapsHut(x, z, PLAYER_RADIUS)) return undefined;
+  const deck = deckHeight(x, z, PLAYER_RADIUS);
+  const ground = terrainHeight(x, z);
+  if (deck === undefined || ground >= deck) return ground;
+  return deck <= previousHeight + STEP_UP ? deck : undefined;
+}
+
+const hutTop = terrainHeight(hutPosition.x, hutPosition.y) + 4.6 * HUT_SCALE;
+
+/** Sweep the camera boom with clearance for the near plane. */
+export function clipShoulderCamera(pivot: THREE.Vector3, offset: THREE.Vector3, result: THREE.Vector3) {
+  const steps = Math.max(1, Math.ceil(offset.length() / .055));
+  result.copy(pivot);
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const x = pivot.x + offset.x * t, y = pivot.y + offset.y * t, z = pivot.z + offset.z * t;
+    if (y <= hutTop + CAMERA_RADIUS && overlapsHut(x, z, CAMERA_RADIUS)) break;
+    const deck = deckHeight(x, z, CAMERA_RADIUS);
+    if (deck !== undefined && y <= deck + CAMERA_RADIUS) break;
+    const ground = Math.max(terrainHeight(x, z),
+      terrainHeight(x + CAMERA_RADIUS, z), terrainHeight(x - CAMERA_RADIUS, z),
+      terrainHeight(x, z + CAMERA_RADIUS), terrainHeight(x, z - CAMERA_RADIUS));
+    if (y <= ground + CAMERA_RADIUS) break;
+    result.set(x, y, z);
+  }
+  return result;
+}
 
 function randomSequence(seed: number) {
   return () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
@@ -118,26 +165,26 @@ export function makeHillsideScene() {
       void main() {
         vec3 ray = normalize(vSky);
         float height = pow(clamp(ray.y, 0.0, 1.0), 0.49);
-        vec3 tint = mix(vec3(.23,.79,.83), vec3(.022,.33,.69), height);
+        vec3 tint = mix(vec3(.035,.43,.63), vec3(.009,.23,.49), height);
         vec3 sun = normalize(vec3(-.65,.47,.50));
         float halo = max(dot(ray, sun), 0.0);
-        tint += vec3(.15,.24,.21) * pow(halo, 9.0);
+        tint += vec3(.04,.12,.13) * pow(halo, 9.0);
         float bands = sin(ray.x * 17.0 + ray.z * 9.0) * sin(ray.z * 19.0 - ray.x * 8.0);
         float wisps = smoothstep(.24,.84,bands) * smoothstep(.09,.21,ray.y) * (1.0-smoothstep(.26,.49,ray.y));
-        tint = mix(tint, vec3(.64,.86,.88), wisps * .27);
+        tint = mix(tint, vec3(.23,.53,.64), wisps * .26);
         gl_FragColor = vec4(tint, 1.0);
         #include <colorspace_fragment>
       }
     `,
   }));
   scene.add(new THREE.Mesh(geometry(new THREE.SphereGeometry(175, 32, 16)), sky));
-  scene.background = new THREE.Color('#86d8d8');
-  scene.fog = new THREE.FogExp2('#75c8d3', .0108);
-  scene.add(new THREE.HemisphereLight(0xc8f7ff, 0x596f60, 2.2));
-  const sun = new THREE.DirectionalLight(0xe6fff6, 2);
+  scene.background = new THREE.Color('#1b9ebd');
+  scene.fog = new THREE.FogExp2('#174d61', .013);
+  scene.add(new THREE.HemisphereLight(0xa8e9ff, 0x244458, 1.9));
+  const sun = new THREE.DirectionalLight(0x9adafa, .8);
   sun.position.set(-38, 45, 26);
   scene.add(sun);
-  const bounce = new THREE.DirectionalLight(0x7bc9ff, .6);
+  const bounce = new THREE.DirectionalLight(0x58c1ff, .35);
   bounce.position.set(38, 8, -25);
   scene.add(bounce);
 
@@ -145,8 +192,8 @@ export function makeHillsideScene() {
   ground.rotateX(-Math.PI / 2);
   const positions = ground.attributes.position;
   const colors = new Float32Array(positions.count * 3);
-  const deep = new THREE.Color('#246846');
-  const light = new THREE.Color('#659743');
+  const deep = new THREE.Color('#143c34');
+  const light = new THREE.Color('#345f45');
   const tint = new THREE.Color();
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i);
@@ -164,20 +211,21 @@ export function makeHillsideScene() {
   structure.rotation.y = -RAMP_HEADING;
   scene.add(structure);
   const woodGrain = makeWoodGrain();
-  const wood = ['#b37b55', '#bc865a', '#d19a68', '#c38b60', '#a67551'].map(color => {
+  const wood = ['#775e56', '#866a5b', '#937461', '#82685b', '#6f5b52'].map(color => {
     const plank = paint(color);
     plank.map = woodGrain;
     return plank;
   });
   const seam = paint('#6f4831');
   const hardware = paint('#596969', .6, .28);
-  const stepAngle = Math.atan2(LANDING - RAMP_BASE, TILE);
-  const stepCount = 16;
-  const plankRun = Math.hypot(TILE, LANDING - RAMP_BASE) / stepCount;
+  const stepAngle = Math.atan2(LANDING - RAMP_BASE, RAMP_RUN);
+  const stepCount = 30;
+  const slopeLength = Math.hypot(RAMP_RUN, LANDING - RAMP_BASE);
+  const plankRun = slopeLength / stepCount;
   for (let i = 0; i < stepCount; i++) {
     const part = (i + .5) / stepCount;
     const y = THREE.MathUtils.lerp(RAMP_BASE, LANDING, part);
-    const z = -(RAMP_START + TILE * part);
+    const z = -(RAMP_START + RAMP_RUN * part);
     const plank = box(structure, wood[i % wood.length], [TILE, .12, plankRun - .018], [0, y - .075, z]);
     plank.rotation.x = stepAngle;
     for (const x of [-2.15, 2.15]) box(structure, hardware, [.062, .018, .06], [x, y + .012, z]);
@@ -187,7 +235,7 @@ export function makeHillsideScene() {
     }
   }
   for (const x of [-2.4, 0, 2.4]) {
-    const brace = box(structure, seam, [.15, .2, Math.hypot(TILE, LANDING - RAMP_BASE)], [x, (LANDING + RAMP_BASE) / 2 - .21, -(LANDING_START + RAMP_START) / 2]);
+    const brace = box(structure, seam, [.15, .2, slopeLength], [x, (LANDING + RAMP_BASE) / 2 - .21, -(LANDING_START + RAMP_START) / 2]);
     brace.rotation.x = stepAngle;
   }
   for (let i = 0; i < 14; i++) {
@@ -202,8 +250,8 @@ export function makeHillsideScene() {
   cone.position.set(0, LANDING, -CONE_CENTER);
   structure.add(cone);
   const corners = [
-    new THREE.Vector3(-2.5, 0, -2.5), new THREE.Vector3(-2.5, 0, 2.5),
-    new THREE.Vector3(2.5, 0, 2.5), new THREE.Vector3(2.5, 0, -2.5),
+    new THREE.Vector3(-CONE_HALF, 0, -CONE_HALF), new THREE.Vector3(-CONE_HALF, 0, CONE_HALF),
+    new THREE.Vector3(CONE_HALF, 0, CONE_HALF), new THREE.Vector3(CONE_HALF, 0, -CONE_HALF),
   ];
   const apex = new THREE.Vector3(0, CONE_HEIGHT, 0);
   const facePaint = material(new THREE.MeshStandardMaterial({ map: woodGrain, vertexColors: true, roughness: .9 }));
@@ -222,7 +270,7 @@ export function makeHillsideScene() {
       for (const k of [0, 1, 2, 0, 2, 3]) {
         faceVertices.push(v[k].x, v[k].y, v[k].z);
         faceColors.push(color.r, color.g, color.b);
-        faceUVs.push(v[k].clone().sub(a).dot(b.clone().sub(a)) / (TILE * TILE), k < 2 ? 0 : 1);
+        faceUVs.push(v[k].clone().sub(a).dot(b.clone().sub(a)) / (4 * CONE_HALF ** 2), k < 2 ? 0 : 1);
       }
     }
     const direction = apex.clone().sub(a);
@@ -318,11 +366,11 @@ export function makeHillsideScene() {
   const barkPaint = paint('#594535');
   const canopy = ['#286341', '#348553', '#4a9960', '#35805e', '#5a9b57'].map(color => new THREE.Color(color));
   for (const [x,z,h,conifer] of [
-    [-29, 44, 10, 0], [-33, 49, 14, 1], [-42, 33, 8, 0], [-47, 51, 11, 0],
-    [-13, 55, 9, 0], [-4, 57, 12, 0], [3, 60, 13, 1], [-7, 46, 8, 0],
-    [-33, 13, 9, 1], [-42, 12, 10, 0], [-49, -1, 11, 1], [-46, 4, 12, 0],
-    [-25, -13, 8, 1], [-12, -18, 9, 0], [9, 26, 11, 1], [16, 35, 10, 0],
-    [-43, 65, 9, 1], [-13, 73, 10, 1], [20, 62, 9, 0],
+    // f33/f45/f59: a left pair and an edge cluster frame a bare aim corridor.
+    [13, 65, 9, 0], [16, 67, 14, 1], [-52, 46, 11, 0], [-55, 49, 8, 0], [-34, 23, 9, 0],
+    // The west-facing review shows uphill silhouettes above the landing.
+    [-32, 0, 12, 0], [-37, -4, 9, 1], [-36, 6, 9, 0], [-28, -16, 9, 1],
+    [-45, -12, 10, 0], [-13, -19, 8, 0], [18, 38, 8, 0], [26, 48, 11, 1],
   ]) {
     const base = terrainHeight(x,z);
     barkTransforms.push(transform(x, base + h * .37, z, h*.067, h*.76, h*.067));
@@ -347,9 +395,10 @@ export function makeHillsideScene() {
   batch(foliage, paint('#f0f7e0'), broadleafTransforms, leaves);
 
   const hut = new THREE.Group();
-  hut.rotation.y = -RAMP_HEADING + .13;
-  const hutX = -25, hutZ = -6;
-  hut.position.set(hutX, terrainHeight(hutX,hutZ), hutZ);
+  hut.rotation.y = HUT_YAW;
+  hut.name = 'Uphill hut';
+  hut.position.set(hutPosition.x, terrainHeight(hutPosition.x, hutPosition.y), hutPosition.y);
+  hut.scale.setScalar(HUT_SCALE);
   scene.add(hut);
   const siding = ['#3d6464', '#4d7372', '#547e79'].map(color => paint(color));
   const trim = paint('#9fcbb9');
@@ -470,8 +519,4 @@ export function makeHillsideScene() {
 
 export function withinWalkArea(x: number, z: number) {
   return x * x + z * z <= WALK_LIMIT * WALK_LIMIT;
-}
-
-export function cameraFloor(x: number, z: number) {
-  return Math.max(terrainHeight(x,z), deckHeight(x,z) ?? -Infinity);
 }

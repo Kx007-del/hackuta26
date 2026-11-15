@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { cameraFloor, makeHillsideScene, RAMP_HEADING, RIDGE_DISTANCE, RIDGE_HEADING, spawnHeight, walkHeight, withinWalkArea } from './hillsideScene';
+import { clipShoulderCamera, makeHillsideScene, RAMP_HEADING, RIDGE_DISTANCE, RIDGE_HEADING, spawnHeight, walkHeight } from './hillsideScene';
 
 type ReviewView = 'ramp' | 'ridge';
 type PreviewControls = {
@@ -14,10 +14,13 @@ const CAMERA_BACK = 3.05;
 const CAMERA_RIGHT = .64;
 const PIVOT_HEIGHT = 1.55;
 const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD']);
+const LOOK_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 
 export default function HillsidePreview() {
   const mount = useRef<HTMLDivElement>(null);
   const controls = useRef<PreviewControls | null>(null);
+  const keyboardLook = useRef(false);
+  const [lookEnabled, setLookEnabled] = useState(false);
   const [captured, setCaptured] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -44,7 +47,7 @@ export default function HillsidePreview() {
     renderer.setClearColor('#80cbd3');
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.03;
+    renderer.toneMappingExposure = .88;
     const gl = renderer.getContext();
     const rendererInfo = gl.getExtension('WEBGL_debug_renderer_info');
     const software = !!rendererInfo && /swiftshader|llvmpipe|software rasterizer/i.test(gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL));
@@ -55,7 +58,7 @@ export default function HillsidePreview() {
     const cameraOffset = new THREE.Vector3();
     const cameraPosition = new THREE.Vector3();
     let x = 0, z = 0, floor = spawnHeight, elevation = spawnHeight;
-    let heading = RAMP_HEADING, pitch = -.16;
+    let heading = RAMP_HEADING, pitch = -.10;
     let gait = 0, walkWeight = 0;
     let frame = 0, lastTime = performance.now(), disposed = false, lookDirty = false;
 
@@ -71,18 +74,8 @@ export default function HillsidePreview() {
       pivot.set(x, elevation + PIVOT_HEIGHT, z);
       const shoulder = camera.aspect < 1.45 ? .50 : CAMERA_RIGHT;
       cameraOffset.set(-sin * CAMERA_BACK + cos * shoulder, .38 - 1.38 * pitch, cos * CAMERA_BACK + sin * shoulder);
-      let clear = 1;
-      // Keep the camera above the same terrain and build surfaces used for walking.
-      for (let sample = 1; sample <= 12; sample++) {
-        const t = sample / 12;
-        const cx = pivot.x + cameraOffset.x * t, cz = pivot.z + cameraOffset.z * t;
-        if (pivot.y + cameraOffset.y * t < cameraFloor(cx, cz) + .20) {
-          clear = Math.max(.32, (sample - 1) / 12);
-          break;
-        }
-      }
-      cameraPosition.copy(pivot).addScaledVector(cameraOffset, clear);
-      cameraPosition.y = Math.max(cameraPosition.y, cameraFloor(cameraPosition.x, cameraPosition.z) + .22);
+      clipShoulderCamera(pivot, cameraOffset, cameraPosition);
+      world.mannequin.visible = pivot.distanceToSquared(cameraPosition) > .65 ** 2;
       camera.position.copy(cameraPosition);
       camera.rotation.set(pitch, -heading, 0, 'YXZ');
       renderer.render(world.scene, camera);
@@ -94,15 +87,13 @@ export default function HillsidePreview() {
       if (view === 'ridge') {
         // Use the left side of the same upper ramp to keep the cone out of
         // the central sightline after the turn.
-        x = -1.65 * Math.cos(RAMP_HEADING) - .57 * Math.sin(RAMP_HEADING);
-        z = -1.65 * Math.sin(RAMP_HEADING) + .57 * Math.cos(RAMP_HEADING);
+        x = -2.42 * Math.cos(RAMP_HEADING);
+        z = -2.42 * Math.sin(RAMP_HEADING);
       }
-      floor = elevation = walkHeight(x, z, spawnHeight);
+      floor = elevation = spawnHeight;
       gait = walkWeight = 0;
       heading = view === 'ramp' ? RAMP_HEADING : RIDGE_HEADING;
-      // In the aim frame the reticle sits below the skyline and the mannequin
-      // remains visible from the head down through the legs.
-      pitch = view === 'ramp' ? -.16 : Math.atan2(world.ridgePoint.y + .55 - elevation - PIVOT_HEIGHT, RIDGE_DISTANCE) - .085;
+      pitch = view === 'ramp' ? -.10 : Math.atan2(world.ridgePoint.y + .55 - elevation - PIVOT_HEIGHT, RIDGE_DISTANCE) - .135;
       canvas.focus({ preventScroll: true });
       repaint();
     }
@@ -136,7 +127,7 @@ export default function HillsidePreview() {
         document.exitPointerLock();
         return;
       }
-      if (!MOVE_KEYS.has(event.code) ||
+      if ((!MOVE_KEYS.has(event.code) && !(keyboardLook.current && LOOK_KEYS.has(event.code))) ||
           (document.activeElement !== canvas && document.pointerLockElement !== canvas) ||
           event.ctrlKey || event.altKey || event.metaKey) return;
       event.preventDefault();
@@ -154,25 +145,37 @@ export default function HillsidePreview() {
     function clearInput() {
       keys.clear();
     }
+    function moveTo(nx: number, nz: number) {
+      const nextFloor = walkHeight(nx, nz, elevation);
+      if (nextFloor === undefined) return false;
+      x = nx;
+      z = nz;
+      floor = nextFloor;
+      return true;
+    }
     function animate(now: number) {
       if (disposed) return;
       const dt = Math.min(.05, Math.max(0, (now - lastTime) / 1000));
       lastTime = now;
       const forward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
       const right = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
+      if (keyboardLook.current) {
+        const turn = Number(keys.has('ArrowRight')) - Number(keys.has('ArrowLeft'));
+        const tilt = Number(keys.has('ArrowUp')) - Number(keys.has('ArrowDown'));
+        if (turn || tilt) {
+          heading = (heading + turn * dt * 1.65) % (Math.PI * 2);
+          pitch = THREE.MathUtils.clamp(pitch + tilt * dt * 1.15, -.85, .67);
+          lookDirty = true;
+        }
+      }
       let moving = false;
       if (forward || right) {
         const step = WALK_SPEED * dt / Math.hypot(forward, right);
         const sin = Math.sin(heading), cos = Math.cos(heading);
         const nx = x + (sin * forward + cos * right) * step;
         const nz = z + (-cos * forward + sin * right) * step;
-        if (withinWalkArea(nx, nz)) {
-          x = nx;
-          z = nz;
-          floor = walkHeight(x, z, floor);
-          gait += dt * 10;
-          moving = true;
-        }
+        moving = moveTo(nx, nz);
+        if (moving) gait += dt * 10;
       }
       const poseChanged = moving || walkWeight > 0 || elevation !== floor || lookDirty;
       walkWeight = THREE.MathUtils.damp(walkWeight, moving ? 1 : 0, 12, dt);
@@ -225,7 +228,7 @@ export default function HillsidePreview() {
   return <div className="hillside-preview">
     <div className="hillside-stage">
       <div className="hillside-canvas" ref={mount} />
-      {!error && <span className="hillside-reticle" aria-hidden="true" />}
+      {!error && <span className="hillside-reticle" aria-hidden="true"><i/><i/><i/><i/></span>}
       {error && <p className="hillside-error" role="alert">{error}</p>}
     </div>
     {!error && <>
@@ -237,6 +240,14 @@ export default function HillsidePreview() {
       <p className="hillside-instructions" id="hillside-controls">
         <strong>WASD</strong> to walk while the scene is focused. Click the scene for mouse look. Press <strong>Esc</strong> to release.
       </p>
+      <label className="hillside-keyboard-look">
+        <input type="checkbox" checked={lookEnabled} onChange={event => {
+          const enabled = event.currentTarget.checked;
+          keyboardLook.current = enabled;
+          setLookEnabled(enabled);
+        }}/>
+        <span>Keyboard look <span className="showcase-muted">(← / → turn, ↑ / ↓ look up and down)</span></span>
+      </label>
       <p className="hillside-status" role="status">{notice || (captured ? 'Mouse captured.' : 'Mouse free.')}</p>
     </>}
   </div>;
