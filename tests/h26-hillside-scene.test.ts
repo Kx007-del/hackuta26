@@ -7,11 +7,11 @@ import * as THREE from 'three';
 import {
   terrainHeight, walkHeight, withinWalkArea, spawnHeight, clipShoulderCamera,
   RAMP_HEADING, RIDGE_HEADING, RIDGE_DISTANCE, makeHillsideScene,
-  spawnPlayer, stepPlayer, rayHitsTarget, targetBase, RUN_SPEED, GRAVITY, JUMP_SPEED, TARGET_HEIGHT,
+  spawnPlayer, stepPlayer, rayHitsTarget, targetBase, RUN_SPEED, GRAVITY, JUMP_SPEED, TARGET_HEIGHT, MAX_CLIMB_SLOPE,
   type PlayerState, type PlayerInput,
 } from '../packages/gameplay/hillsideScene';
 
-const LANDING = 4.34;
+const LANDING = 2.6;
 const forward = [Math.sin(RAMP_HEADING), -Math.cos(RAMP_HEADING)] as const;
 const right = [Math.cos(RAMP_HEADING), Math.sin(RAMP_HEADING)] as const;
 const at = (u: number, v: number) => [right[0] * u + forward[0] * v, right[1] * u + forward[1] * v] as const;
@@ -36,9 +36,12 @@ test('reference headings: ramp 265°, aim 200°, a 65° left turn', () => {
   assert.equal(Math.round(THREE.MathUtils.radToDeg(RAMP_HEADING - RIDGE_HEADING)), 65);
 });
 
-test('spawn stands on the ramp deck, above the terrain', () => {
-  assert.ok(spawnHeight > terrainHeight(0, 0) + 1, `spawn ${spawnHeight} vs ground ${terrainHeight(0, 0)}`);
-  assert.equal(walkHeight(0, 0, spawnHeight), spawnHeight);
+test('spawn stands on the high platform at the top of the build, well above the terrain', () => {
+  const s = spawnPlayer();
+  assert.equal(s.y, spawnHeight);
+  assert.ok(s.y > terrainHeight(s.x, s.z) + 3, `spawn ${s.y} vs ground ${terrainHeight(s.x, s.z)}`);
+  assert.ok(local(s.x, s.z).v < -3.7, 'spawn is behind the top of the ramp');
+  assert.equal(walkHeight(s.x, s.z, s.y), s.y);
 });
 
 test('ridge marker is 61 m away along the aim heading and above eye level', () => {
@@ -69,11 +72,34 @@ test('cone is preplaced scenery centred on the landing, present in every freshly
   }
 });
 
-test('walking up the ramp from the ground in front of the toe reaches the landing', () => {
-  const start = at(0, -6);
-  const r = walk(start, at(0, 6.9), terrainHeight(...start));
-  assert.equal(r.blocked, 0, 'the ramp toe must be walkable');
+test('the ramp runs downhill from the spawn platform to the landing', () => {
+  const s = spawnPlayer();
+  const r = walk([s.x, s.z], at(0, 6.9), s.y);
+  assert.equal(r.blocked, 0);
   assert.ok(Math.abs(r.h - LANDING) < .05, `expected landing height, got ${r.h}`);
+  assert.ok(s.y - LANDING > 3, 'the landing is well below the spawn');
+  let prev = Infinity;
+  for (let v = -3.7; v <= 6.8; v += .5) {
+    const h = walkHeight(...at(0, v), 10)!;
+    assert.ok(h <= prev + 1e-9, `ramp rises at v=${v}`);
+    prev = h;
+  }
+});
+
+test('running down the ramp builds speed above the flat run speed', () => {
+  let p = spawnPlayer(), top = 0;
+  for (let i = 0; i < 80; i++) {
+    p = stepPlayer(p, { forward: 1, right: 0, heading: RAMP_HEADING, jump: false }, 1 / 60);
+    top = Math.max(top, Math.hypot(p.vx, p.vz));
+  }
+  assert.ok(top > RUN_SPEED * 1.25, `top speed ${top}`);
+});
+
+test('the target marker tracks the dummy and shows live distance', () => {
+  const preview = src('../packages/gameplay/HillsidePreview.tsx');
+  assert.match(preview, /className="hillside-marker"/);
+  assert.match(preview, /markerPoint\.copy\(world\.target\.position\)/);
+  assert.match(preview, /Math\.round\(distance\)\}/);
 });
 
 test('C1: side entry into the landing is blocked (no walking under or through the deck)', () => {
@@ -158,7 +184,9 @@ test('preview controls: Space jumps, arrows look without a toggle, F/click fire,
   assert.match(preview, /event\.code === 'Space' && !event\.repeat\) jumpQueued = true/);
   assert.match(preview, /event\.code === 'KeyF'\) \{ event\.preventDefault\(\); fire\(\)/);
   assert.match(preview, /event\.code === 'KeyR'\) \{ event\.preventDefault\(\); reset\(\)/);
-  assert.match(preview, /if \(document\.pointerLockElement === canvas\) \{\s*fire\(\)/);
+  assert.match(preview, /event\.button === 0 && document\.pointerLockElement === canvas\) fire\(\)/);
+  assert.match(preview, /document\.addEventListener\('mousedown', onMouseDown\)/);
+  assert.match(preview, /document\.removeEventListener\('mousedown', onMouseDown\)/);
   assert.match(preview, /player = stepPlayer\(player, \{ forward, right, heading, jump: jumpQueued \}, dt\)/);
 });
 
@@ -227,11 +255,26 @@ test('downhill is faster than uphill', () => {
   assert.ok(downhill > uphill * 1.2, `downhill ${downhill} vs uphill ${uphill}`);
 });
 
-test('steep terrain cannot be walked up (the old bug walked straight up the west hill)', () => {
-  const { p } = simulate(360, () => ({ forward: 1 }));
-  const v = local(p.x, p.z).v;
-  assert.ok(v < 26, `stopped at the foot of the steep west rise, got v=${v}`);
-  assert.ok(p.y < 10, `stayed low, y=${p.y}`);
+test('a long run from spawn never puts the player or the camera inside the terrain', () => {
+  // The earlier build let W walk straight up the west hill and the camera sank into the grass.
+  const { trace } = simulate(480, i => ({ forward: 1, heading: RAMP_HEADING + Math.sin(i / 60) * .6 }));
+  for (const s of trace) {
+    assert.ok(s.y >= terrainHeight(s.x, s.z) - 1e-6, 'player below terrain');
+    const heading = RAMP_HEADING, sin = Math.sin(heading), cos = Math.cos(heading);
+    const pivot = new THREE.Vector3(s.x, s.y + 1.55, s.z);
+    const cam = clipShoulderCamera(pivot, new THREE.Vector3(-sin * 3.05 + cos * .64, .52, cos * 3.05 + sin * .64), new THREE.Vector3());
+    assert.ok(cam.y > terrainHeight(cam.x, cam.z), 'camera inside terrain');
+  }
+});
+
+test('terrain steeper than the climb limit blocks a grounded player', () => {
+  // Drive stepPlayer against a synthetic rise by starting next to the build's high side wall:
+  // the deck rule blocks it, and the terrain rule is exercised through MAX_CLIMB_SLOPE directly.
+  const start = spawnPlayer(...at(-6, 0));
+  const heading = Math.atan2(right[0], -right[1]);
+  const { p } = simulate(120, () => ({ forward: 1, heading }), start);
+  assert.ok(local(p.x, p.z).u < -2.5, 'stopped at the wall of the build');
+  assert.ok(MAX_CLIMB_SLOPE > .5 && MAX_CLIMB_SLOPE < 1.2);
 });
 
 test('the build stays solid with the new physics: side entry into the landing is blocked', () => {

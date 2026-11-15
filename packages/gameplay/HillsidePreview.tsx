@@ -18,6 +18,7 @@ const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowLeft',
 export default function HillsidePreview() {
   const mount = useRef<HTMLDivElement>(null);
   const controls = useRef<PreviewControls | null>(null);
+  const marker = useRef<HTMLDivElement>(null);
   const [captured, setCaptured] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -56,6 +57,8 @@ export default function HillsidePreview() {
     const cameraOffset = new THREE.Vector3();
     const cameraPosition = new THREE.Vector3();
     const aim = new THREE.Vector3();
+    const markerPoint = new THREE.Vector3();
+    let fov = CAMERA_FOV, dip = 0, wasGrounded = true, lastVy = 0;
     let player: PlayerState = spawnPlayer();
     let heading = RAMP_HEADING, pitch = -.10;
     let gait = 0, walkWeight = 0, jumpQueued = false, cooldown = 0, shotId = 0, targetDown = false, fall = 0;
@@ -78,10 +81,36 @@ export default function HillsidePreview() {
       const shoulder = camera.aspect < 1.45 ? .50 : CAMERA_RIGHT;
       cameraOffset.set(-sin * CAMERA_BACK + cos * shoulder, .38 - 1.38 * pitch, cos * CAMERA_BACK + sin * shoulder);
       clipShoulderCamera(pivot, cameraOffset, cameraPosition);
+      cameraPosition.y -= dip;
       world.mannequin.visible = pivot.distanceToSquared(cameraPosition) > .65 ** 2;
       camera.position.copy(cameraPosition);
       camera.rotation.set(pitch, -heading, 0, 'YXZ');
+      camera.updateMatrixWorld();
+      placeMarker();
       renderer.render(world.scene, camera);
+    }
+
+    // A floating marker over the target with live distance; pinned to the edge when off-screen.
+    function placeMarker() {
+      const el = marker.current;
+      if (!el) return;
+      markerPoint.copy(world.target.position).y += 2.35;
+      const distance = Math.hypot(world.target.position.x - player.x, world.target.position.z - player.z);
+      markerPoint.project(camera);
+      const behind = markerPoint.z > 1;
+      let sx = behind ? -markerPoint.x : markerPoint.x, sy = behind ? -markerPoint.y : markerPoint.y;
+      const offscreen = behind || Math.abs(sx) > .92 || Math.abs(sy) > .86;
+      if (offscreen) {
+        const scale = Math.max(Math.abs(sx) / .92, Math.abs(sy) / .86, 1e-6);
+        sx /= scale; sy /= scale;
+      }
+      el.style.left = `${(sx + 1) * 50}%`;
+      el.style.top = `${(1 - sy) * 50}%`;
+      el.dataset.offscreen = String(offscreen);
+      el.style.setProperty('--arrow', `${Math.atan2(-sy, sx)}rad`);
+      el.dataset.down = String(targetDown);
+      const label = el.lastElementChild as HTMLElement | null;
+      if (label) label.textContent = targetDown ? 'DOWN' : `${Math.round(distance)} m`;
     }
 
     function reset() {
@@ -89,7 +118,8 @@ export default function HillsidePreview() {
       player = spawnPlayer();
       heading = RAMP_HEADING;
       pitch = -.10;
-      gait = walkWeight = cooldown = fall = 0;
+      gait = walkWeight = cooldown = fall = dip = 0;
+      fov = CAMERA_FOV;
       jumpQueued = targetDown = false;
       setShot(undefined);
       canvas.focus({ preventScroll: true });
@@ -113,12 +143,13 @@ export default function HillsidePreview() {
       if (locked) setNotice('');
     }
 
+    function onMouseDown(event: MouseEvent) {
+      if (event.button === 0 && document.pointerLockElement === canvas) fire();
+    }
+
     function onCanvasClick() {
       canvas.focus({ preventScroll: true });
-      if (document.pointerLockElement === canvas) {
-        fire();
-        return;
-      }
+      if (document.pointerLockElement === canvas) return;
       const unavailable = () => {
         if (!disposed) setNotice('Mouse look unavailable here. Use ← → ↑ ↓ to aim and F to fire.');
       };
@@ -183,6 +214,15 @@ export default function HillsidePreview() {
       if (moving) gait += dt * speed * 1.7;
       walkWeight = THREE.MathUtils.damp(walkWeight, moving ? 1 : 0, 12, dt);
       if (targetDown && fall < 1) fall = Math.min(1, fall + dt * 3);
+      // Feel the speed and the drop: FOV widens with speed and falling, landings dip the camera.
+      const fallSpeed = player.grounded ? 0 : Math.max(0, -player.vy);
+      const fovTarget = CAMERA_FOV + Math.max(0, speed - 6.2) * 2.2 + Math.min(12, fallSpeed * 1.1);
+      fov = THREE.MathUtils.damp(fov, fovTarget, 6, dt);
+      if (Math.abs(camera.fov - fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+      if (player.grounded && !wasGrounded) dip = Math.min(.55, Math.max(0, -lastVy - 3) * .06);
+      dip = THREE.MathUtils.damp(dip, 0, 9, dt);
+      wasGrounded = player.grounded;
+      lastVy = player.vy;
       repaint();
       frame = requestAnimationFrame(animate);
     }
@@ -199,6 +239,7 @@ export default function HillsidePreview() {
     resize();
     controls.current = { reset };
     canvas.addEventListener('click', onCanvasClick);
+    document.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('blur', clearInput);
     document.addEventListener('pointerlockchange', lockChanged);
     document.addEventListener('mousemove', onMouse);
@@ -212,6 +253,7 @@ export default function HillsidePreview() {
       cancelAnimationFrame(frame);
       observer.disconnect();
       canvas.removeEventListener('click', onCanvasClick);
+      document.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('blur', clearInput);
       document.removeEventListener('pointerlockchange', lockChanged);
       document.removeEventListener('mousemove', onMouse);
@@ -237,6 +279,7 @@ export default function HillsidePreview() {
       {!error && shot && <p key={`shot-${shot.id}`} className={`hillside-result${shot.hit ? ' is-hit' : ''}`} role="status">
         {shot.hit ? <>ELIMINATED <small>{Math.round(shot.distance)} m{shot.airborne ? ' · IN THE AIR' : ''}</small></> : 'MISS'}
       </p>}
+      {!error && <div ref={marker} className="hillside-marker" aria-hidden="true"><i/><span/></div>}
       {!error && <button type="button" className="hillside-reset" onClick={() => controls.current?.reset()} aria-label="Reset position (R)">↺ Reset</button>}
       {!error && <p className="hillside-hint" id="hillside-controls">{hint}</p>}
       {error && <p className="hillside-error" role="alert">{error}</p>}

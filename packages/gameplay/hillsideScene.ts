@@ -9,8 +9,12 @@ const RAMP_START = -3.7;
 const RAMP_RUN = 10.5;
 const LANDING_START = RAMP_START + RAMP_RUN;
 const LANDING_END = LANDING_START + TILE;
-const RAMP_BASE = .54;
-const LANDING = 4.34;
+/** The build descends: a high spawn platform, a downhill ramp, then the landing with the cone. */
+const RAMP_TOP = 6.4;
+const LANDING = 2.6;
+const PLATFORM_START = RAMP_START - TILE;
+/** Spawn on the top platform, facing down the ramp. */
+const SPAWN_V = RAMP_START - 1.2;
 const CONE_HEIGHT = 1.84;
 const CONE_HALF = 2.3;
 const CONE_CENTER = LANDING_START + TILE / 2;
@@ -40,19 +44,19 @@ export function terrainHeight(x: number, z: number) {
   const leftBank = 7.8 * bell(along - 48, 28) * bell(across + 36, 24);
   const west = x * rampForward.x + z * rampForward.y;
   const lateral = x * rampRight.x + z * rampRight.y;
-  const westRise = 16.6 * bell(west - 29, 11) * bell(lateral + .5, 26);
+  const westRise = 6 * bell(west - 42, 12) * bell(lateral + .5, 26);
   const undulations = Math.sin(x * .14 + z * .09) * .46 + Math.sin(z * .22 - x * .082) * .25;
   const approach = 1.12 * bell(x - rampForward.x * RAMP_START, 4) * bell(z - rampForward.y * RAMP_START, 3.3);
   const raw = hill + shoulder + leftBank + westRise + undulations + approach - .73;
-  const toe = 1 - THREE.MathUtils.smoothstep(Math.hypot(west - RAMP_START, Math.max(0, Math.abs(lateral) - 2.65)), .5, 2.3);
-  return THREE.MathUtils.lerp(raw, RAMP_BASE - .04, toe);
+  return raw;
 }
 
 function deckHeight(x: number, z: number, padding = 0) {
   const u = x * rampRight.x + z * rampRight.y;
   const v = x * rampForward.x + z * rampForward.y;
-  if (Math.abs(u) > TILE / 2 + padding || v < RAMP_START - padding || v > LANDING_END + padding) return undefined;
-  if (v < LANDING_START) return THREE.MathUtils.lerp(RAMP_BASE, LANDING, Math.max(0, v - RAMP_START) / RAMP_RUN);
+  if (Math.abs(u) > TILE / 2 + padding || v < PLATFORM_START - padding || v > LANDING_END + padding) return undefined;
+  if (v < RAMP_START) return RAMP_TOP;
+  if (v < LANDING_START) return THREE.MathUtils.lerp(RAMP_TOP, LANDING, (v - RAMP_START) / RAMP_RUN);
   const fromApex = Math.max(Math.abs(u), Math.abs(v - CONE_CENTER));
   if (fromApex > CONE_HALF) return LANDING;
   return LANDING + CONE_HEIGHT * (1 - fromApex / CONE_HALF);
@@ -65,9 +69,10 @@ function overlapsHut(x: number, z: number, padding: number) {
     Math.abs(sin * dx + cos * dz) < HUT_HALF_DEPTH + padding;
 }
 
-export const spawnHeight = deckHeight(0, 0)!;
+export const SPAWN_POINT = { x: rampForward.x * SPAWN_V, z: rampForward.y * SPAWN_V };
+export const spawnHeight = RAMP_TOP;
 
-/** A low entry can step onto the toe. Higher edges remain solid from below. */
+/** The build is solid from the side and underneath; only its top surface can be walked on. */
 export function walkHeight(x: number, z: number, previousHeight: number) {
   if (!withinWalkArea(x, z) || overlapsHut(x, z, PLAYER_RADIUS)) return undefined;
   const deck = deckHeight(x, z, PLAYER_RADIUS);
@@ -127,7 +132,7 @@ function supportAt(x: number, z: number, y: number): Support | undefined {
   return { height: ground, deck: false };
 }
 
-export function spawnPlayer(x = 0, z = 0): PlayerState {
+export function spawnPlayer(x = SPAWN_POINT.x, z = SPAWN_POINT.z): PlayerState {
   const y = supportAt(x, z, spawnHeight)?.height ?? spawnHeight;
   return { x, z, y, vx: 0, vz: 0, vy: 0, grounded: true };
 }
@@ -142,18 +147,23 @@ export function stepPlayer(state: PlayerState, input: PlayerInput, dt: number): 
     wishX = (sin * input.forward + cos * input.right) / length;
     wishZ = (-cos * input.forward + sin * input.right) / length;
   }
-  let speed = RUN_SPEED;
+  // In the air, steering never slows you below the speed you launched with.
+  let speed = p.grounded ? RUN_SPEED : Math.max(RUN_SPEED, Math.hypot(p.vx, p.vz));
   if (p.grounded && length) {
     // Downhill carries you faster, uphill slows you down.
     const probe = .6;
     const here = supportAt(p.x, p.z, p.y)?.height ?? p.y;
     const ahead = supportAt(p.x + wishX * probe, p.z + wishZ * probe, p.y + STEP_UP)?.height ?? here;
-    speed *= THREE.MathUtils.clamp(1 - (ahead - here) / probe * .45, .6, 1.35);
+    const grade = (ahead - here) / probe;
+    // Downhill builds speed (the ramp runs you up to about 1.4x), uphill drags.
+    speed *= THREE.MathUtils.clamp(1 - grade * (grade < 0 ? 1.1 : .45), .6, 1.6);
   }
   // Grounded: snappy acceleration and braking. Airborne: keep momentum and only steer while a key is held.
   const jumping = input.jump && p.grounded;
   if ((p.grounded && !jumping) || length) {
-    const blend = Math.min(1, (p.grounded && !jumping ? GROUND_ACCEL : AIR_ACCEL) * dt);
+    // Carried speed bleeds off slowly so a run down the ramp keeps its momentum.
+    const carrying = p.grounded && length > 0 && Math.hypot(p.vx, p.vz) > speed + .1;
+    const blend = Math.min(1, (carrying ? 2.2 : p.grounded && !jumping ? GROUND_ACCEL : AIR_ACCEL) * dt);
     p.vx += (wishX * speed - p.vx) * blend;
     p.vz += (wishZ * speed - p.vz) * blend;
   }
@@ -357,13 +367,13 @@ export function makeHillsideScene() {
   });
   const seam = paint('#6f4831');
   const hardware = paint('#596969', .6, .28);
-  const stepAngle = Math.atan2(LANDING - RAMP_BASE, RAMP_RUN);
+  const stepAngle = Math.atan2(LANDING - RAMP_TOP, RAMP_RUN);
   const stepCount = 30;
-  const slopeLength = Math.hypot(RAMP_RUN, LANDING - RAMP_BASE);
+  const slopeLength = Math.hypot(RAMP_RUN, LANDING - RAMP_TOP);
   const plankRun = slopeLength / stepCount;
   for (let i = 0; i < stepCount; i++) {
     const part = (i + .5) / stepCount;
-    const y = THREE.MathUtils.lerp(RAMP_BASE, LANDING, part);
+    const y = THREE.MathUtils.lerp(RAMP_TOP, LANDING, part);
     const z = -(RAMP_START + RAMP_RUN * part);
     const plank = box(structure, wood[i % wood.length], [TILE, .12, plankRun - .018], [0, y - .075, z]);
     plank.rotation.x = stepAngle;
@@ -374,15 +384,19 @@ export function makeHillsideScene() {
     }
   }
   for (const x of [-2.4, 0, 2.4]) {
-    const brace = box(structure, seam, [.15, .2, slopeLength], [x, (LANDING + RAMP_BASE) / 2 - .21, -(LANDING_START + RAMP_START) / 2]);
+    const brace = box(structure, seam, [.15, .2, slopeLength], [x, (LANDING + RAMP_TOP) / 2 - .21, -(LANDING_START + RAMP_START) / 2]);
     brace.rotation.x = stepAngle;
   }
   for (let i = 0; i < 14; i++) {
     box(structure, wood[i % wood.length], [TILE, .15, TILE / 14 - .012], [0, LANDING - .075, -(LANDING_START + (i + .5) * TILE / 14)]);
   }
-  for (const x of [-2.3, 2.3]) for (const v of [LANDING_START + .22, LANDING_END - .22]) {
+  for (let i = 0; i < 14; i++) {
+    box(structure, wood[(i + 2) % wood.length], [TILE, .15, TILE / 14 - .012], [0, RAMP_TOP - .075, -(PLATFORM_START + (i + .5) * TILE / 14)]);
+  }
+  for (const x of [-2.3, 2.3]) for (const v of [PLATFORM_START + .22, RAMP_START - .22, RAMP_START + RAMP_RUN / 2, LANDING_START + .22, LANDING_END - .22]) {
+    const top = v < RAMP_START ? RAMP_TOP : v < LANDING_START ? THREE.MathUtils.lerp(RAMP_TOP, LANDING, (v - RAMP_START) / RAMP_RUN) : LANDING;
     const at = terrainHeight(rampRight.x * x + rampForward.x * v, rampRight.y * x + rampForward.y * v);
-    if (at < LANDING) box(structure, seam, [.25, LANDING - at, .25], [x, (LANDING + at) / 2 - .1, -v]);
+    if (at < top) box(structure, seam, [.25, top - at, .25], [x, (top + at) / 2 - .1, -v]);
   }
   const cone = new THREE.Group();
   cone.name = 'Preplaced wooden cone';
@@ -468,7 +482,7 @@ export function makeHillsideScene() {
     const x = (random() - .5) * (near ? 41 : 145);
     const z = (random() - (near ? .4 : .35)) * (near ? 35 : 150);
     const y = terrainHeight(x, z);
-    if (deckHeight(x,z) !== undefined && y < LANDING) continue;
+    if (deckHeight(x,z) !== undefined) continue;
     const h = .17 + random() * .35;
     const yaw = random() * Math.PI * 2;
     grassTransforms.push(transform(x, y - .04, z, .38 + random() * .5, h, .65, yaw));
