@@ -2,11 +2,5 @@
   "role": "codex-2",
   "lease": null,
   "status": "offline",
-  "results": {
-    "36c2f6af-6c96-4c1a-8dc8-7d513e3eeb1a": {
-      "status": "failed",
-      "finishedAt": "2026-11-15T00:45:18.673Z",
-      "error": "Agent reported a blocker; inspect local reply/logs"
-    }
-  }
+  "results": {}
 }
