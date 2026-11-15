@@ -47,6 +47,39 @@ test('visor stays in front of the helmet across both front quarters and aim pitc
   } finally { c.dispose(); }
 });
 
+test('the head is an original helmet with no painted face', () => {
+  const c = makeCharacter();
+  try {
+    const names: string[] = [];
+    c.root.traverse(o => names.push(o.name));
+    assert.ok(!names.some(n => /^Mask /.test(n)), 'no mask eyes or smile');
+  } finally { c.dispose(); }
+});
+
+test('keeps a boot planted during the run cycle and settles after landing', () => {
+  const c = makeCharacter();
+  function footHeight() {
+    c.root.updateMatrixWorld(true);
+    const heights: number[] = [];
+    c.root.traverse(o => { if (o.name === 'Boot') heights.push(new THREE.Box3().setFromObject(o,true).min.y); });
+    assert.equal(heights.length,2);
+    return Math.min(...heights);
+  }
+  try {
+    for(let i=0;i<32;i++) {
+      c.pose({ ...base, walkWeight:1, gait:i*Math.PI/16 });
+      assert.ok(footHeight() >= -.001 && footHeight() < .02, 'at least one boot stays level with the sole planted');
+    }
+    c.pose({ ...base, grounded:false, vy:-4 });
+    c.pose(base);
+    assert.ok(footHeight() >= -.001 && footHeight() < .02);
+    const compressed = c.joints.rightShoulder.clone();
+    c.tick(.2);
+    c.pose(base);
+    assert.ok(compressed.distanceTo(c.joints.rightShoulder) > .006, 'the landing compression releases');
+  } finally { c.dispose(); }
+});
+
 test('both hands stay on the rifle in every pose (no floating hands, no stretched arms)', () => {
   const c = makeCharacter();
   try {

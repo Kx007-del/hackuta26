@@ -219,7 +219,9 @@ export function openProgressionStore(options: { databasePath?: string; now?: () 
         if (reason || !row) {
           progress = { status: 'not-counted', reason: reason ?? 'Not counted.' };
         } else {
-          const ranked = attempt.aiStatus === 'ok';
+          // Every eligible attempt counts for Highest Score, with or without the AI comparison,
+          // so a new best always reaches the leaderboard.
+          const ranked = true;
           const xpAwarded = Math.max(0, Math.min(XP_PER_ATTEMPT, DAILY_XP_CAP - (dayRow?.xp ?? 0)));
           const streak = advanceStreak(row.streak_current, row.streak_last_day, day);
           const newDay = row.streak_last_day !== day;
@@ -243,7 +245,6 @@ export function openProgressionStore(options: { databasePath?: string; now?: () 
           if (better) give('top-ten', (rankOf('score', playerId) ?? Infinity) <= LEADERBOARD_SIZE);
           progress = {
             status: 'counted', xpAwarded, xpToday: (dayRow?.xp ?? 0) + xpAwarded, xpCap: DAILY_XP_CAP, ranked,
-            ...(ranked ? {} : { unrankedReason: attempt.aiStatus === 'declined' ? 'Scored on game data only (AI scoring off), so it isn’t ranked.' : 'AI scoring was unavailable, so it isn’t ranked.' }),
             newBadges, currentStreak: p.streak, bestScore: p.best, newBest: better,
           };
         }

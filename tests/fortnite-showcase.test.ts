@@ -79,3 +79,19 @@ test('account routes are optional and preserve the public play and event navigat
     for (const label of ['Play', 'Leaderboards', 'Join Events', 'Host an Event']) assert.ok(html.includes(`>${label}</a>`));
   }
 });
+
+
+test('badge collection is a separate routable view under Leaderboards', () => {
+  const html = renderToStaticMarkup(createElement(FortniteShowcase, { path: '/leaderboards/badges', search: '' }));
+  assert.match(html, /My Badge Collection/);
+  assert.match(html, /aria-current="page">Leaderboards/);
+  assert.doesNotMatch(html, /Page not found|<video|Highest Score showcase leaderboard/);
+});
+
+test('public host demo is separate from real organizer management and requires no login', () => {
+  const html=renderToStaticMarkup(createElement(FortniteShowcase,{path:'/host/demo',search:''}));
+  assert.match(html,/You · Demo Host/);assert.match(html,/INTERACTIVE SHOWCASE DEMO/);assert.match(html,/No sign-in needed/);
+  assert.match(html,/aria-current="page">Host an Event/);assert.doesNotMatch(html,/Page not found|Loading your account|Use your browser guest profile/);
+  const host=renderToStaticMarkup(createElement(FortniteShowcase,{path:'/host',search:''}));
+  assert.match(host,/href="\/host\/demo"/);
+});

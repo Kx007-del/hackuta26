@@ -3,6 +3,7 @@ import { BADGES, NAME_MAX, TIE_RULES, cleanDisplayName, type BadgeId, type Board
 import { showcaseBoard } from '../../packages/progression/showcase';
 import { fetchBoard, fetchMe, saveName, type MeResponse } from './api';
 import { BadgeIcon } from './BadgeIcon';
+import { BADGE_FAMILIES, collection, compactBadges } from './badges';
 import './community.css';
 
 type Load<T> = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; data: T };
@@ -50,7 +51,7 @@ export function ProgressPanel({ progression }: { progression: Progression }) {
 }
 
 function ProgressSummary({ profile }: { profile: Profile }) {
-  const earned = profile.badges.filter(b => b.earnedAt).length;
+  const earned = collection(profile.badges).filter(b => b.earned).length;
   return <div className="progress-summary">
     <p className="progress-summary__name">{profile.name}</p>
     <div className="progress-xp">
@@ -60,13 +61,13 @@ function ProgressSummary({ profile }: { profile: Profile }) {
       </div>
     </div>
     <dl className="progress-stats">
-      <div><dt>Best score</dt><dd>{profile.bestScore ?? '—'}{profile.bestScore === null && <small>no ranked score yet</small>}</dd></div>
+      <div><dt>Best score</dt><dd>{profile.bestScore ?? '—'}{profile.bestScore === null && <small>no score yet</small>}</dd></div>
       <div><dt>Eligible attempts</dt><dd>{profile.attempts}</dd></div>
       <div><dt>Total XP</dt><dd>{profile.xp}</dd></div>
       <div><dt>Streak</dt><dd>{profile.currentStreak} <small>longest {profile.longestStreak}</small></dd></div>
     </dl>
     <div className="progress-badges">
-      <span>Badges {earned} / {profile.badges.length}</span>
+      <a href="/leaderboards/badges">Badge collection {earned} / {BADGE_FAMILIES.length} ↗</a>
       {earned > 0 ? <BadgeStrip ids={profile.badges.filter(b => b.earnedAt).map(b => b.id)} /> : <span className="community-muted">None yet</span>}
     </div>
     <p className="community-note">Daily XP resets at 00:00 UTC ({nextUtcReset()} your time).</p>
@@ -92,14 +93,14 @@ export function CommunitySection({ progression }: { progression: Progression }) 
     <div className="community-grid">
       <div>
         <div className="board-mode" role="group" aria-label="Which standings to show">
-          <button type="button" aria-pressed={mode === 'showcase'} onClick={() => setMode('showcase')}>Showcase leaderboard <small>example players</small></button>
+          <button type="button" aria-pressed={mode === 'showcase'} onClick={() => setMode('showcase')}>Showcase leaderboard <small>fictional standings</small></button>
           <button type="button" aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Live standings <small>real players</small></button>
         </div>
         <Leaderboards version={progression.version} mode={mode} profile={profile} onShowcase={() => setMode('showcase')} />
       </div>
       <div className="community-side">
         <NameEditor profile={profile} onSaved={progression.setProfile} />
-        <BadgeCollection profile={profile} />
+        <BadgeCollectionLink profile={profile} />
       </div>
     </div>
     <details className="community-rules">
@@ -110,7 +111,7 @@ export function CommunitySection({ progression }: { progression: Progression }) 
         <li><b>Eligible attempt:</b> one shot, at least 1.5 seconds after the attempt starts, after moving at least 3 m or turning at least 20°. Attempts less than 3 seconds apart don’t count.</li>
         <li><b>Days:</b> days run on UTC, using the server’s clock. A new day starts at 00:00 UTC ({nextUtcReset()} your time).</li>
         <li><b>Play Streak:</b> consecutive UTC days with at least one eligible attempt. More attempts on the same day don’t add to it. Missing a whole UTC day resets it; your longest streak is kept.</li>
-        <li><b>Highest Score:</b> your best score from attempts with a completed AI comparison. Game-data-only, declined or unavailable AI results earn XP but aren’t ranked. Scores are AI-estimated and this isn’t anti-cheat.</li>
+        <li><b>Highest Score:</b> your best score from any eligible attempt. A new best updates the leaderboard straight away. Scores are partly AI-estimated and this isn’t anti-cheat.</li>
         <li><b>Champion:</b> at 00:00 UTC each day, the server saves who was Highest Score #1 at that moment. Champion means #1 at one checkpoint; Reigning Champion means #1 at seven checkpoints in a row.{meta && ` Checkpoints started on ${formatDate(meta.trackingSince)} (UTC).`}</li>
         <li><b>Guest profile:</b> progress belongs to this browser through a private cookie. It isn’t an account: clearing cookies or switching device or browser starts a new guest. Names aren’t verified and one person can have several guests.</li>
       </ul>
@@ -166,7 +167,7 @@ function Leaderboards({ version, mode, profile, onShowcase }: { version: number;
 
 function BoardTable({ board, metric, onShowcase }: { board: Leaderboard; metric: string; onShowcase: () => void }) {
   const empty: Record<Board, string> = {
-    score: 'No ranked scores yet. Finish an attempt with AI scoring on to set the first one.',
+    score: 'No scores yet. Finish an eligible attempt to set the first one.',
     streak: 'No active streaks yet. Finish an eligible attempt today to start one.',
     xp: 'No XP earned yet. Finish an eligible attempt to earn 10 XP.',
   };
@@ -201,16 +202,15 @@ function ShowcaseTable({ board, metric, label, profile }: { board: Board; metric
   const rows = showcaseBoard(board, profile);
   const you = rows.find(r => r.kind === 'you');
   return <>
-    <p className="showcase-banner"><b>Example players.</b> These players and results are fictional, for illustration only. They aren’t real users or real activity.</p>
     <table className="community-table">
-      <caption className="visually-hidden">{label} showcase leaderboard with example players</caption>
+      <caption className="visually-hidden">{label} fictional showcase standings</caption>
       <thead><tr><th scope="col">Showcase position</th><th scope="col">Player</th><th scope="col">{metric}</th><th scope="col">Badges</th></tr></thead>
       <tbody>
         {rows.map(row => <tr key={`${row.kind}-${row.position}`} className={row.kind === 'you' ? 'is-you is-real' : 'is-example'}>
           <td>{row.position}</td>
           <td>{row.kind === 'you'
             ? <><span className="community-real-tag">You — real progress</span> {row.name}</>
-            : <>{row.name} <span className="community-example-tag">Example</span></>}</td>
+            : row.name}</td>
           <td>{row.value}</td>
           <td><BadgeStrip ids={row.badges} /></td>
         </tr>)}
@@ -221,32 +221,23 @@ function ShowcaseTable({ board, metric, label, profile }: { board: Board; metric
         : profile ? 'You’re not on this board yet. Your row appears here once you have real progress for it.'
         : 'Finish an eligible attempt and your real progress will appear here as “You — real progress”.'}
     </p>
-    <p className="community-note">Sorted with the same rules as Live standings. Ties: {TIE_TEXT[board]}</p>
+    <p className="community-note">Showcase players are fictional. Sorted with the same rules as Live standings. Ties: {TIE_TEXT[board]}</p>
   </>;
 }
 
 function BadgeStrip({ ids }: { ids: BadgeId[] }) {
+  ids = compactBadges(ids);
   if (!ids.length) return <span className="community-muted">—</span>;
   return <span className="badge-strip" aria-label={ids.map(id => BADGE_NAMES[id]).join(', ')} role="img">
-    {ids.map(id => <span key={id} title={BADGE_NAMES[id]}><BadgeIcon id={id} earned size={22} /></span>)}
+    {ids.map(id => <span key={id} title={BADGE_NAMES[id]}><BadgeIcon id={id} earned size={28} /></span>)}
   </span>;
 }
 
-function BadgeCollection({ profile }: { profile: Profile | null }) {
-  const badges = profile?.badges ?? BADGES.map(b => ({ ...b, earnedAt: null }));
-  return <div className="badge-collection">
-    <h3>Badges</h3>
-    <ul>
-      {badges.map(b => <li key={b.id} className={b.earnedAt ? 'is-earned' : 'is-locked'}>
-        <BadgeIcon id={b.id} earned={!!b.earnedAt} />
-        <div>
-          <p className="badge-collection__name">{b.name} <span className="visually-hidden">{b.earnedAt ? '(earned)' : '(locked)'}</span></p>
-          <p className="badge-collection__criteria">{b.criteria}</p>
-          <p className="badge-collection__state">{b.earnedAt ? `Earned ${formatDate(b.earnedAt)} (UTC)` : 'Locked'}</p>
-        </div>
-      </li>)}
-    </ul>
-  </div>;
+function BadgeCollectionLink({ profile }: { profile: Profile | null }) {
+  const badges = collection(profile?.badges), earned = badges.filter(b => b.earned).length;
+  return <aside className="badge-collection-link"><p className="showcase-eyebrow">BUILT THROUGH PLAY</p><h3>Your badge collection</h3>
+    <div className="badge-preview" aria-hidden="true">{badges.map(b => <BadgeIcon key={b.key} id={b.latest?.id ?? b.ids[0]} earned={b.earned} size={46} />)}</div>
+    <p><b>{earned} / 5</b> families collected</p><a href="/leaderboards/badges">View my collection ↗</a></aside>;
 }
 
 function NameEditor({ profile, onSaved }: { profile: Profile | null; onSaved: (p: Profile) => void }) {

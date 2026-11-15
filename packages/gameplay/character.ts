@@ -3,9 +3,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { makeRifle, type Rifle } from './rifle';
 
 /**
- * An original stylized player character for the hillside showcase: a rounded white helmet with a
- * dark visor band, an off-white suit with charcoal detailing and a purple back pack. It is not a
- * copy of any game or real-world character.
+ * An original stylized character: white streetwear and a round helmet
+ * with a glowing visor (no face). Not a copy of any game or real person's look; no game meshes or
+ * textures are used.
  *
  * Root space: feet at the origin, facing -Z, +Y up. The rifle is held in both hands; the arms are
  * solved each frame (two-bone IK) so the hands stay on the grip and forend at every aim angle.
@@ -57,8 +57,6 @@ export function makeCharacter(): Character {
   const suit = mat(new THREE.MeshStandardMaterial({ color: '#eceef0', roughness: .82 }));
   const suitShade = mat(new THREE.MeshStandardMaterial({ color: '#d3d8dd', roughness: .85 }));
   const charcoal = mat(new THREE.MeshStandardMaterial({ color: '#2c3138', roughness: .78 }));
-  const pack = mat(new THREE.MeshStandardMaterial({ color: '#a24bd0', roughness: .74 }));
-  const packDark = mat(new THREE.MeshStandardMaterial({ color: '#6a2b8f', roughness: .8 }));
   const visor = mat(new THREE.MeshStandardMaterial({ color: '#13262d', roughness: .32, emissive: '#0c4d58', emissiveIntensity: .35 }));
 
   const root = new THREE.Group();
@@ -69,66 +67,69 @@ export function makeCharacter(): Character {
     return mesh;
   };
   const rbox = (m: THREE.Material, w: number, h: number, d: number, r: number) => new THREE.Mesh(geo(new RoundedBoxGeometry(w, h, d, 2, r)), m);
-  const capsule = (m: THREE.Material, r: number, length: number) => new THREE.Mesh(geo(new THREE.CapsuleGeometry(r, length, 4, 10)), m);
+  function tailored(m: THREE.Material, profile: [number, number][], depth: number, segments = 20) {
+    const geometry = geo(new THREE.LatheGeometry(profile.map(([radius, y]) => new THREE.Vector2(radius, y)), segments));
+    geometry.scale(1, 1, depth);
+    return new THREE.Mesh(geometry, m);
+  }
 
   // ---- Hips and legs -------------------------------------------------------
   const hips = new THREE.Group();
   hips.position.y = HIP_HEIGHT;
   root.add(hips);
-  add(hips, rbox(suitShade, .36, .2, .25, .07), 0, 0, 0);
-  add(hips, rbox(charcoal, .38, .06, .27, .025), 0, .07, 0); // belt
+  add(hips, rbox(suitShade, .39, .22, .29, .08), 0, 0, 0);
+  add(hips, rbox(suit, .4, .09, .29, .033), 0, .085, 0);
+  add(hips, rbox(charcoal, .13, .15, .051, .021), .155, -.022, -.132);
   const thighs: THREE.Group[] = [], knees: THREE.Group[] = [], ankles: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const thigh = new THREE.Group();
     thigh.position.set(side * .1, -.03, 0);
     hips.add(thigh);
-    add(thigh, capsule(suit, .085, .29), 0, -.215, 0);
+    add(thigh, tailored(suit, [[0,-.47],[.073,-.46],[.092,-.36],[.111,-.21],[.111,-.055],[.084,.035],[0,.053]], .89));
+    add(thigh, rbox(suitShade, .086, .12, .031, .014), side * .067,-.169,-.078);
     const knee = new THREE.Group();
     knee.position.y = -.45;
     thigh.add(knee);
-    add(knee, rbox(charcoal, .14, .09, .05, .02), 0, 0, -.075); // knee pad
-    add(knee, capsule(suit, .074, .28), 0, -.205, 0);
+    add(knee, tailored(suit, [[0,-.411],[.058,-.407],[.063,-.315],[.079,-.187],[.092,-.047],[.077,.038],[0,.063]], .86));
+    add(knee, rbox(suitShade, .12, .096, .032, .017), 0,-.027,-.073);
+    add(knee, rbox(suitShade, .134, .07, .125, .021), 0,-.36,0);
     const ankle = new THREE.Group();
     ankle.position.y = -.405;
     knee.add(ankle);
-    add(ankle, rbox(charcoal, .13, .115, .26, .045), 0, 0, -.04).name = 'Boot';
+    add(ankle, rbox(suit, .152, .132, .265, .049), 0, .008, -.055).name = 'Boot';
+    add(ankle, rbox(charcoal, .159, .024, .272, .011), 0,-.053,-.055);
+    for(const z of [-.08,-.114,-.144]) add(ankle,rbox(suitShade,.082,.008,.014,.003),0,.065,z);
     thighs.push(thigh);
     knees.push(knee);
     ankles.push(ankle);
   }
 
-  // ---- Torso, pack and helmet ---------------------------------------------
+  // ---- Torso and helmet ---------------------------------------------
   const chest = new THREE.Group();
   chest.position.set(0, 1.27, 0);
   chest.rotation.y = STANCE_YAW;
   root.add(chest);
-  add(chest, rbox(suit, .46, .44, .27, .11), 0, .02, 0);
-  add(chest, rbox(charcoal, .48, .05, .29, .02), 0, -.17, 0); // lower trim
+  add(chest, tailored(suit, [[0,-.259],[.174,-.255],[.185,-.225],[.18,-.115],[.221,.008],[.246,.117],[.221,.192],[.132,.23],[.082,.245],[0,.245]], .69));
+  add(chest, rbox(suitShade, .38,.063,.264,.027),0,-.226,0);
+  add(chest, rbox(suitShade, .239,.257,.085,.04),0,.027,.122);
+  add(chest, rbox(charcoal,.012,.333,.015,.006),0,.015,-.156);
+  add(chest, rbox(suitShade,.235,.092,.072,.027),0,-.132,-.115);
   for (const side of [-1, 1]) {
-    const strap = add(chest, rbox(charcoal, .05, .46, .02, .01), side * .1, .03, -.138);
-    strap.rotation.z = side * .14;
-    add(chest, new THREE.Mesh(geo(new THREE.SphereGeometry(.085, 12, 10)), suitShade), side * .25, .15, 0); // shoulder caps
+    const strap = add(chest, rbox(suitShade, .018, .19, .013, .006), side * .045, .131, -.151);
+    strap.rotation.z = side * .11;
+    add(chest, rbox(suit,.173,.177,.191,.077),side*.222,.129,0);
   }
-  const packGroup = new THREE.Group();
-  packGroup.rotation.y = -STANCE_YAW * .55; // sits square on the back from the camera's view
-  chest.add(packGroup);
-  add(packGroup, rbox(pack, .32, .35, .14, .05), 0, .02, .2);
-  add(packGroup, rbox(packDark, .26, .1, .04, .015), 0, -.05, .28);
-  const roll = add(packGroup, new THREE.Mesh(geo(new THREE.CylinderGeometry(.06, .06, .3, 12)), packDark), 0, .23, .2);
-  roll.rotation.z = Math.PI / 2;
-
   const head = new THREE.Group();
   head.position.set(0, .3, 0);
   chest.add(head);
-  add(head, capsule(charcoal, .07, .05), 0, .02, 0); // neck
+  add(head,rbox(suitShade,.196,.09,.178,.037),0,-.005,0);
   const helmet = new THREE.Group();
   helmet.position.y = .19;
   head.add(helmet);
-  const dome = add(helmet, new THREE.Mesh(geo(new THREE.SphereGeometry(.165, 20, 14)), suit));
+  const dome = add(helmet, new THREE.Mesh(geo(new THREE.SphereGeometry(.165, 24, 16)), suit));
   dome.name = 'Helmet shell';
   dome.scale.set(1, 1.1, 1.04);
-  // Clear the shell's largest scaled radius, including between the visor's
-  // polygon vertices. A tapered lower rim previously intersected the helmet.
+  // The visor band clears the shell's largest scaled radius so it never clips into the dome.
   const visorRadius = .165 * 1.04 + .004;
   add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(visorRadius, visorRadius, .085, 32, 1, true, Math.PI - 1.15, 2.3)), visor), 0, -.005, 0).name = 'Helmet visor';
   for (const side of [-1, 1]) {
@@ -148,10 +149,11 @@ export function makeCharacter(): Character {
   // ---- Arms: meshes re-placed each frame from IK ----------------------------
   const shoulderLocal = [new THREE.Vector3(.25, .15, 0), new THREE.Vector3(-.25, .15, 0)];
   const arm = () => ({
-    upper: add(root, capsule(suit, .062, UPPER_ARM - .1)),
-    fore: add(root, capsule(suitShade, .055, FOREARM - .1)),
-    elbow: add(root, new THREE.Mesh(geo(new THREE.SphereGeometry(.06, 10, 8)), charcoal)),
-    hand: add(root, rbox(charcoal, .07, .09, .1, .03)),
+    upper: add(root, tailored(suit, [[0,-.194],[.064,-.19],[.081,-.132],[.077,-.041],[.064,.121],[.06,.178],[0,.193]],.97)),
+    fore: add(root, tailored(suit, [[0,-.176],[.061,-.175],[.066,-.095],[.057,.04],[.043,.131],[.041,.157],[0,.16]],.98)),
+    elbow: add(root, rbox(suitShade,.123,.126,.119,.056)),
+    cuff: add(root,rbox(suitShade,.095,.05,.092,.021)),
+    hand: add(root, rbox(charcoal, .073, .089, .092, .029)),
   });
   const arms = [arm(), arm()];
   const joints = {
@@ -181,6 +183,7 @@ export function makeCharacter(): Character {
 
   const rightPole = new THREE.Vector3(.6, -1, .25), leftPole = new THREE.Vector3(-.55, -1, -.1);
   const toRoot = new THREE.Matrix4();
+  let wasGrounded = true, landingBend = 0;
   function solveArms() {
     root.updateMatrixWorld(true);
     toRoot.copy(root.matrixWorld).invert();
@@ -200,6 +203,8 @@ export function makeCharacter(): Character {
       place(parts.upper, shoulder, elbow);
       place(parts.fore, elbow, wrist);
       parts.elbow.position.copy(elbow);
+      parts.cuff.position.copy(wrist).lerp(elbow,.065);
+      parts.cuff.quaternion.copy(parts.fore.quaternion);
       parts.hand.position.copy(wrist).lerp(palm, .5);
       parts.hand.quaternion.setFromUnitVectors(UP, dir.copy(palm).sub(wrist).normalize());
     }
@@ -207,29 +212,37 @@ export function makeCharacter(): Character {
 
   function pose(state: CharacterPose) {
     const w = state.grounded ? state.walkWeight : 0;
-    const breathe = Math.sin(state.time * 2.1) * .006 * (1 - w);
-    hips.position.y = HIP_HEIGHT + (state.grounded ? -Math.abs(Math.sin(state.gait)) * .035 * w : 0);
-    chest.position.y = 1.27 + breathe + (hips.position.y - HIP_HEIGHT);
-    chest.rotation.x = -.12 * w + (state.grounded ? 0 : -.06);
+    if (state.grounded && !wasGrounded) landingBend = 1;
+    wasGrounded = state.grounded;
+    const breathe = Math.sin(state.time * 2.1) * .004 * (1 - w);
+    hips.position.y = HIP_HEIGHT;
     if (state.grounded) {
       thighs.forEach((thigh, i) => {
         const phase = state.gait + i * Math.PI;
-        thigh.rotation.x = Math.sin(phase) * .7 * w;
-        knees[i].rotation.x = -(Math.max(0, Math.sin(phase - .9)) * 1.05 * w + .06);
+        thigh.rotation.x = Math.sin(phase) * .59 * w + .11 * landingBend;
+        knees[i].rotation.x = -(Math.max(0, Math.sin(phase - .65)) ** 1.5 * .86 * w + .05 + .21 * landingBend);
       });
     } else {
-      const rising = state.vy > 0 ? 1 : .6;
-      thighs[0].rotation.x = .8 * rising; knees[0].rotation.x = -1.3 * rising;
-      thighs[1].rotation.x = .5 * rising; knees[1].rotation.x = -1.25 * rising;
+      const tuck = THREE.MathUtils.lerp(.57,1,THREE.MathUtils.smoothstep(state.vy,-6,4));
+      thighs[0].rotation.x = .75 * tuck; knees[0].rotation.x = -1.19 * tuck;
+      thighs[1].rotation.x = .46 * tuck; knees[1].rotation.x = -1.09 * tuck;
     }
-    // Keep the soles close to level whatever the hip and knee are doing.
-    ankles.forEach((ankle, i) => { ankle.rotation.x = -(thighs[i].rotation.x + knees[i].rotation.x) * .85; });
+    let lowestSole = Infinity;
+    ankles.forEach((ankle,i)=>{
+      const thigh = thighs[i].rotation.x, shin = thigh + knees[i].rotation.x;
+      ankle.rotation.x = -shin;
+      const sole = hips.position.y + thighs[i].position.y + knees[i].position.y*Math.cos(thigh) + ankle.position.y*Math.cos(shin) - .065;
+      lowestSole = Math.min(lowestSole,sole);
+    });
+    if (state.grounded) hips.position.y -= lowestSole;
+    chest.position.y = 1.27 + breathe + (hips.position.y - HIP_HEIGHT);
+    chest.rotation.x = -.095 * w - .045 * (state.grounded ? landingBend : 1);
     const aimPitch = THREE.MathUtils.clamp(state.pitch, -.6, .55);
     const kick = rifle.recoil * rifle.recoil;
     aim.position.copy(AIM_PIVOT).setY(AIM_PIVOT.y + (chest.position.y - 1.27)).add(tmp.set(0, 0, .055 * kick));
     aim.rotation.x = aimPitch + .07 * kick;
     head.rotation.x = aimPitch * .5;
-    head.rotation.y = -STANCE_YAW * .7; // look down the barrel, not along the bladed torso
+    head.rotation.y = -STANCE_YAW * .87;
     solveArms();
   }
 
@@ -238,8 +251,15 @@ export function makeCharacter(): Character {
   return {
     root, rifle, joints, pose,
     fire() { rifle.fire(); },
-    tick(dt) { rifle.tick(dt); },
-    reset() { rifle.reset(); },
+    tick(dt) {
+      rifle.tick(dt);
+      landingBend = Math.max(0,landingBend - dt/.19);
+    },
+    reset() {
+      rifle.reset();
+      landingBend = 0;
+      wasGrounded = true;
+    },
     dispose() {
       rifle.dispose();
       for (const g of geometries.splice(0)) g.dispose();
