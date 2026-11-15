@@ -7,7 +7,7 @@ const COOKIE_MAX_AGE_S = 365 * 24 * 60 * 60;
 const ATTEMPT_ID = /^[A-Za-z0-9_-]{8,64}$/;
 const BOARDS = new Set<Board>(['score', 'streak', 'xp']);
 
-function readCookie(req: Request, name: string) {
+export function readCookie(req: Request, name: string) {
   const header = req.headers.cookie;
   if (typeof header !== 'string' || header.length > 8192) return undefined;
   for (const part of header.split(';')) {
@@ -32,7 +32,8 @@ export type ScoringProgress = {
     | { kind: 'claimed'; finish<T extends object>(attempt: ScoredAttempt, body: T): T & { progress: AttemptProgress }; abort(): void };
 };
 
-type Options = { store?: ProgressionStore; now?: () => number; guestsPerHour?: number; renamesPerHour?: number };
+type Options = { store?: ProgressionStore; now?: () => number; guestsPerHour?: number; renamesPerHour?: number;
+  accountIdentity?: (req: Request) => { id: string; name: string } | undefined; isRegistered?: (id: string) => boolean };
 
 export function registerProgression(app: Express, options: Options = {}) {
   const now = options.now ?? Date.now;
@@ -47,7 +48,13 @@ export function registerProgression(app: Express, options: Options = {}) {
     if (bucket.size > 5000) for (const [k, v] of bucket) if (!v.some(x => t - x < 3_600_000)) bucket.delete(k);
     return true;
   }
-  const viewer = (req: Request) => store.find(readCookie(req, GUEST_COOKIE));
+  const viewer = (req: Request) => {
+    const account = options.accountIdentity?.(req);
+    if (account) return account;
+    const guest = store.find(readCookie(req, GUEST_COOKIE));
+    // A guest token must stop authorizing a profile once credentials are attached.
+    return guest && !options.isRegistered?.(guest.id) ? guest : undefined;
+  };
   /** Existing guest, or a new one (rate-limited per client). An unknown cookie gets a fresh guest. */
   function ensureGuest(req: Request, res: Response) {
     const found = viewer(req);

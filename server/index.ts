@@ -8,6 +8,7 @@ import { registerShowcaseScoring } from "../packages/showcase-scoring/server";
 import { registerProgression } from "../packages/progression/server";
 import { registerCompetitions } from "../packages/competitions/server";
 import { resolveRuntimeConfig } from "./runtime-config";
+import { registerAuth } from "../packages/auth/server";
 const { host, port, commit } = resolveRuntimeConfig(process.env);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
@@ -21,7 +22,9 @@ app.get("/api/health", (_req, res) =>
 );
 const cleanup = registerApi(app, { clipLookup: clips.get });
 const closeLeaderboard = registerLeaderboardApi(app);
-const progression = registerProgression(app);
+let auth: ReturnType<typeof registerAuth> | undefined;
+const progression = registerProgression(app, { accountIdentity: req => auth?.identity(req), isRegistered: id => auth?.isRegistered(id) ?? false });
+auth = registerAuth(app, { progression: progression.store });
 const competitions = registerCompetitions(app, { identity: progression.identity, revision: commit });
 registerShowcaseScoring(app, { progress: progression.scoring, competitions: competitions.scoring });
 app.use("/api", (_req, res) =>
@@ -51,6 +54,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
       cleanup();
       closeLeaderboard();
       progression.close();
+      auth?.close();
       competitions.close();
       clips.close();
       process.exit(0);

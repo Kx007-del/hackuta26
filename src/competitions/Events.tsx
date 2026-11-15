@@ -32,6 +32,7 @@ function Identity({ onReady }: { onReady: () => void }) {
     catch (error) { setError((error as Error).message); } finally { setBusy(false); }
   }
   return <form className="event-card" onSubmit={submit}><h3>Use your browser guest profile</h3>
+    <p><a href={`/login?next=${encodeURIComponent(typeof window === 'undefined' ? '/host' : window.location.pathname)}`}>Sign in</a> for account access across devices, or continue with a guest profile below.</p>
     <p>Your display name is public. Your profile and event access are linked to this browser; cross-device recovery is not available.</p>
     <label>Display name<input required maxLength={24} value={name} autoComplete="nickname" onChange={e => setName(e.target.value)} /></label>
     <button disabled={busy}>Save guest profile</button>{error && <p role="alert">{error}</p>}</form>;
@@ -114,7 +115,7 @@ export function HostHome() {
   const [created, setCreated] = useState<CompetitionView>();
   return <section className="showcase-route events-view"><p className="showcase-eyebrow">YOUR COMMUNITY. YOUR CHALLENGE.</p><h1>Host an Event</h1>
     <p>Create a competition for your community. Set the rules, invite players and track results on your event’s own leaderboard.</p><EventDetails />
-    <p>Manage your events from this browser. Hosting is free, with no payment required.</p>
+    <p>Hosting is free, with no payment required. Sign in to access your account’s events across devices, or use this browser’s guest profile.</p>
     {me.status === 401 ? <Identity onReady={() => refresh(v => v + 1)} /> : <BusyOrError load={me} />}
     {me.data && !me.data.hosting && <form className="event-card" onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { await api('/api/organizer/enroll', { package: hostingPackage, acknowledgeDemo: true }); refresh(v => v + 1); } catch (error) { setError((error as Error).message); } finally { setBusy(false); } }}>
       <h2>Choose your hosting package</h2><label>Package — free<select value={hostingPackage} onChange={e => setPackage(e.target.value)}>{HOSTING_PACKAGES.map(p => <option key={p} value={p}>{packageLabel(p)}</option>)}</select></label>
