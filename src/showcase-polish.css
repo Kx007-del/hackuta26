@@ -1,0 +1,99 @@
+/* Supplied FaZe toolkit: Source / Anton, Red Alert, black, white and opacity. */
+.fortnite-showcase {
+  --showcase-line: #ffffff24;
+  --showcase-soft: #ffffffb3;
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-inline: clamp(20px, 5vw, 72px);
+}
+.fortnite-showcase > main { flex: 1; min-width: 0; }
+.fortnite-showcase .showcase-header { gap: 24px; padding-block: 24px; border-bottom-color: var(--showcase-line); }
+.fortnite-showcase .showcase-brand { font-size: clamp(27px, 3vw, 38px); gap: 18px; letter-spacing: .01em; }
+.fortnite-showcase .showcase-brand img { width: 58px; height: 44px; flex: none; }
+.fortnite-showcase .showcase-brand span { padding-left: 18px; border-left-width: 2px; }
+.fortnite-showcase .competition-nav { gap: 5px; align-items: center; }
+.fortnite-showcase .competition-nav a { min-height: 44px; padding: 12px 15px; border: 1px solid transparent; border-radius: 3px; font-weight: 700; font-size: 13px; }
+.fortnite-showcase .competition-nav a:hover { color: #ffffff; background: #ffffff0a; }
+.fortnite-showcase .competition-nav a[aria-current="page"] { background: #e4002b1a; border-color: #e4002b66; box-shadow: inset 0 -2px #e4002b; color: #ffffff; }
+.showcase-skip { position: fixed; top: 12px; left: 20px; transform: translateY(-160%); padding: 12px 18px; background: #111111; color: #ffffff; border: 2px solid #ffffff; z-index: 20; }
+.showcase-skip:focus { transform: none; }
+.fortnite-showcase .showcase-intro { position: relative; isolation: isolate; max-width: none; padding-block: clamp(42px, 6vw, 76px) 44px; }
+.fortnite-showcase .showcase-intro::after { content: ""; position: absolute; z-index: -1; inset: 24px 0 24px auto; width: 36%; background: url('/brand/tiger-grey.jpg') center / cover; opacity: .09; mask-image: linear-gradient(to right, transparent, #111111); pointer-events: none; }
+.fortnite-showcase .showcase-eyebrow { display: flex; align-items: center; gap: 12px; font-size: 11px; letter-spacing: .2em; line-height: 1.6; }
+.fortnite-showcase .showcase-eyebrow::before { content: ""; display: inline-block; flex: none; width: 24px; height: 2px; background: #e4002b; }
+.fortnite-showcase h1 { letter-spacing: -.015em; text-wrap: balance; }
+.fortnite-showcase .showcase-intro h1 { margin: 22px 0; font-size: clamp(47px, 7.2vw, 98px); line-height: 1.02; }
+.fortnite-showcase .showcase-intro > p:last-child { color: var(--showcase-soft); max-width: 550px; font-size: 18px; }
+.fortnite-showcase .showcase-reference { grid-template-columns: minmax(0, .82fr) minmax(0, 1.6fr); align-items: start; gap: clamp(24px, 4vw, 56px); padding-block: 36px 60px; }
+.fortnite-showcase .showcase-reference > div { min-width: 0; }
+.fortnite-showcase .showcase-reference h2 { font-size: clamp(28px, 3.1vw, 42px); line-height: 1.12; }
+.fortnite-showcase .showcase-reference > div:first-child > p:last-child { color: var(--showcase-soft); max-width: 340px; }
+.fortnite-showcase .showcase-reference video { border-radius: 6px; border-color: #ffffff30; box-shadow: 0 20px 50px #11111180; }
+.fortnite-showcase .showcase-start { gap: 16px; min-height: 48px; padding: 14px 25px; border: 1px solid #e4002b; border-radius: 3px; margin-block: 20px 0; letter-spacing: .03em; }
+.fortnite-showcase .showcase-start:hover { background: #e4002b; box-shadow: 0 0 0 3px #e4002b26; }
+.fortnite-showcase .showcase-route { padding-block: clamp(32px, 5vw, 58px) 56px; }
+.fortnite-showcase .showcase-route > h1 { margin-bottom: 18px; font-size: clamp(40px, 5.5vw, 70px); line-height: 1.08; }
+.fortnite-showcase .showcase-route > p:not(.showcase-eyebrow) { color: var(--showcase-soft); line-height: 1.7; }
+.fortnite-showcase .event-grid { gap: 24px; margin-block: 26px; }
+.fortnite-showcase :is(.event-card, .showcase-score, .progress-panel) { border-radius: 5px; padding: clamp(20px, 3vw, 30px); border-color: var(--showcase-line); background: #ffffff03; }
+.fortnite-showcase .event-card > h2 { font-size: clamp(25px, 2.8vw, 34px); margin-top: 0; }
+.fortnite-showcase .event-card > h3 { margin-block: 10px 14px; }
+.fortnite-showcase .event-card > p + p { margin-top: 10px; }
+.fortnite-showcase :is(.event-card, .event-review) label { font-weight: 700; color: #ffffff; }
+.fortnite-showcase .events-view :is(input, textarea, select) { background: #111111; border-color: #ffffff30; border-radius: 3px; min-height: 46px; }
+.fortnite-showcase .events-view :is(input, textarea, select):focus { border-color: #ffffff; }
+.fortnite-showcase .events-view input[type="checkbox"] { min-height: 0; width: 18px; height: 18px; accent-color: #e4002b; }
+.fortnite-showcase .events-view button:not(.hillside-reset) { min-height: 44px; border-radius: 3px; }
+.fortnite-showcase .event-notice { background: transparent; padding: 12px 16px; border: 1px solid var(--showcase-line); border-left: 2px solid #e4002b; border-radius: 3px; color: var(--showcase-soft); }
+.fortnite-showcase .event-notice summary { color: #ffffff; font-weight: 700; padding-block: 2px; }
+.fortnite-showcase .event-notice p { margin-top: 12px; }
+.fortnite-showcase .event-examples { border-top: 1px solid var(--showcase-line); padding-top: 18px; }
+.fortnite-showcase :is(.community-table, .event-table table) { font-variant-numeric: tabular-nums; }
+.fortnite-showcase :is(.community-table, .event-table) th { padding-block: 14px; letter-spacing: .08em; font-size: 11px; text-transform: uppercase; color: var(--showcase-soft); }
+.fortnite-showcase :is(.community-table, .event-table) td { padding-block: 14px; }
+.fortnite-showcase .community-table tbody tr:hover { background: #ffffff05; }
+.fortnite-showcase .community-table td:first-child { font-size: 22px; }
+.fortnite-showcase .community-tabs { gap: 6px; }
+.fortnite-showcase .community-tabs button { padding-inline: 18px; }
+.fortnite-showcase .community-tabs button[aria-selected="true"] { background: #e4002b12; }
+.fortnite-showcase .community-grid { gap: 32px; }
+.fortnite-showcase .community-panel { min-width: 0; overflow-x: auto; }
+.fortnite-showcase .progress-stats { gap: 18px; margin-top: 22px; }
+.fortnite-showcase .progress-stats dd { font-size: 30px; margin-top: 6px; }
+.fortnite-showcase .progress-panel h3 { font-size: 25px; }
+.fortnite-showcase .progress-panel { border-left-color: #e4002b; }
+.fortnite-showcase .showcase-score__total b { font-size: clamp(64px, 8vw, 88px); }
+.fortnite-showcase .showcase-score__parts { gap: 18px 36px; }
+.fortnite-showcase .score-bar { padding-block: 7px; }
+.fortnite-showcase .score-bar__track { height: 6px; }
+.fortnite-showcase .showcase-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 28px; margin-top: auto; }
+.showcase-footer-brand { font-family: Anton; font-size: 23px; letter-spacing: .03em; color: #ffffff; flex: none; }
+.showcase-footer-brand > span { display: block; font-family: Source; font-size: 10px; font-weight: 700; letter-spacing: .18em; margin-top: 5px; color: #ffffffb3; }
+.fortnite-showcase .showcase-footer > p { max-width: 460px; font-size: 12px; text-align: right; }
+@media (max-width: 900px) {
+  .fortnite-showcase .showcase-header { gap: 18px; }
+  .fortnite-showcase .competition-nav { margin-left: 0; }
+  .fortnite-showcase .competition-nav a { padding-inline: 12px; }
+}
+@media (max-width: 760px) {
+  .fortnite-showcase .showcase-header { padding-block: 20px 16px; }
+  .fortnite-showcase .showcase-brand { font-size: 30px; }
+  .fortnite-showcase .showcase-brand img { width: 48px; height: 38px; }
+  .fortnite-showcase .competition-nav { width: 100%; gap: 6px; margin-top: 6px; }
+  .fortnite-showcase .competition-nav a { padding: 10px 8px; text-align: center; }
+  .fortnite-showcase .showcase-intro { padding-block: 38px 32px; }
+  .fortnite-showcase .showcase-intro::after { width: 45%; opacity: .05; }
+  .fortnite-showcase .showcase-reference { grid-template-columns: minmax(0, 1fr); gap: 22px; padding-bottom: 40px; }
+  .fortnite-showcase .showcase-reference > div:first-child > p:last-child { max-width: none; }
+  .fortnite-showcase .showcase-reference .showcase-start { width: 100%; }
+  .fortnite-showcase .showcase-eyebrow { letter-spacing: .14em; }
+  .fortnite-showcase .community-grid { grid-template-columns: minmax(0, 1fr); }
+  .fortnite-showcase .progress-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fortnite-showcase .showcase-footer { align-items: start; flex-direction: column; gap: 16px; }
+  .fortnite-showcase .showcase-footer > p { text-align: left; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fortnite-showcase :is(.competition-nav a, .showcase-start) { transition: background-color .16s ease, box-shadow .16s ease; }
+}
