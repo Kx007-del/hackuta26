@@ -125,9 +125,12 @@ export function makeCharacter(): Character {
   helmet.position.y = .19;
   head.add(helmet);
   const dome = add(helmet, new THREE.Mesh(geo(new THREE.SphereGeometry(.165, 20, 14)), suit));
+  dome.name = 'Helmet shell';
   dome.scale.set(1, 1.1, 1.04);
-  // Visor band across the front (cylinder segment facing -Z).
-  add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(.172, .166, .085, 20, 1, true, Math.PI - 1.15, 2.3)), visor), 0, -.005, 0);
+  // Clear the shell's largest scaled radius, including between the visor's
+  // polygon vertices. A tapered lower rim previously intersected the helmet.
+  const visorRadius = .165 * 1.04 + .004;
+  add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(visorRadius, visorRadius, .085, 32, 1, true, Math.PI - 1.15, 2.3)), visor), 0, -.005, 0).name = 'Helmet visor';
   for (const side of [-1, 1]) {
     const ear = add(helmet, new THREE.Mesh(geo(new THREE.CylinderGeometry(.055, .055, .04, 14)), charcoal), side * .165, 0, 0);
     ear.rotation.z = Math.PI / 2;
