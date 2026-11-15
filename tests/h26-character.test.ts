@@ -1,0 +1,156 @@
+// Claude 2: original character + rifle (packages/gameplay/character.ts, rifle.ts).
+// Pure three.js checks; no WebGL or DOM required.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import * as THREE from 'three';
+import { makeCharacter, UPPER_ARM, FOREARM, type CharacterPose } from '../packages/gameplay/character';
+import { makeRifle } from '../packages/gameplay/rifle';
+import { makeHillsideScene } from '../packages/gameplay/hillsideScene';
+
+const base: CharacterPose = { grounded: true, gait: 0, walkWeight: 0, vy: 0, pitch: 0, time: 0 };
+const poses: Array<[string, CharacterPose]> = [
+  ['idle', base],
+  ['idle aim up', { ...base, pitch: .5 }],
+  ['idle aim down', { ...base, pitch: -.55 }],
+  ...[0, 1, 2, 3, 4, 5].map(i => [`run ${i}`, { ...base, gait: i, walkWeight: 1, time: i }] as [string, CharacterPose]),
+  ['jump rising', { ...base, grounded: false, vy: 5 }],
+  ['falling aim up', { ...base, grounded: false, vy: -8, pitch: .4 }],
+];
+const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
+
+test('both hands stay on the rifle in every pose (no floating hands, no stretched arms)', () => {
+  const c = makeCharacter();
+  try {
+    for (const [name, pose] of poses) {
+      c.pose(pose);
+      const j = c.joints;
+      for (const [s, e, w, t, side] of [
+        [j.rightShoulder, j.rightElbow, j.rightWrist, j.rightTarget, 'right'],
+        [j.leftShoulder, j.leftElbow, j.leftWrist, j.leftTarget, 'left'],
+      ] as const) {
+        assert.ok(Math.abs(s.distanceTo(e) - UPPER_ARM) < 1e-6, `${name} ${side} upper arm stretched`);
+        assert.ok(e.distanceTo(w) <= FOREARM + 1e-6, `${name} ${side} forearm stretched`);
+        assert.ok(w.distanceTo(t) < .012, `${name} ${side} hand ${w.distanceTo(t).toFixed(3)} m off the rifle`);
+        assert.ok(e.y < Math.max(s.y, w.y) + .02, `${name} ${side} elbow sticks up above the shoulder and hand`);
+      }
+    }
+  } finally { c.dispose(); }
+});
+
+test('the rifle points where the player aims (forward, following pitch)', () => {
+  const c = makeCharacter();
+  try {
+    for (const pitch of [-.5, 0, .4]) {
+      c.pose({ ...base, pitch });
+      c.root.updateMatrixWorld(true);
+      const back = new THREE.Vector3(), front = new THREE.Vector3();
+      c.rifle.root.localToWorld(back.set(0, .02, .2));
+      c.rifle.muzzle.getWorldPosition(front);
+      const dir = front.sub(back).normalize();
+      assert.ok(dir.z < -.8, `barrel forward at pitch ${pitch}`);
+      assert.ok(Math.abs(Math.asin(dir.y) - pitch) < .05, `barrel pitch ${Math.asin(dir.y).toFixed(3)} vs ${pitch}`);
+    }
+  } finally { c.dispose(); }
+});
+
+test('boots touch the ground standing still, and the rifle stays clear of the helmet', () => {
+  const c = makeCharacter();
+  try {
+    for (const pitch of [-.55, 0, .55]) {
+      c.pose({ ...base, pitch });
+      c.root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(c.root);
+      assert.ok(Math.abs(box.min.y) < .03, `lowest point ${box.min.y.toFixed(3)} should be at the ground`);
+      const helmet = c.root.getObjectByProperty('type', 'Mesh');
+      void helmet;
+      const head = new THREE.Vector3(0, 1.27 + .3 + .2, 0);
+      const barrel = [0, -.2, -.4, -.6, -.86].map(z => c.rifle.root.localToWorld(new THREE.Vector3(0, .02, z)));
+      for (const p of barrel) assert.ok(p.distanceTo(head) > .2, `barrel ${p.distanceTo(head).toFixed(3)} m from helmet centre`);
+    }
+    c.pose(base);
+    c.root.updateMatrixWorld(true);
+    const tall = new THREE.Box3().setFromObject(c.root);
+    assert.ok(tall.max.y > 1.75 && tall.max.y < 2.05, `character height ${tall.max.y.toFixed(2)}`);
+  } finally { c.dispose(); }
+});
+
+test('jump pose tucks the legs; run pose swings them', () => {
+  const c = makeCharacter();
+  try {
+    const boots = () => {
+      c.root.updateMatrixWorld(true);
+      const ys: number[] = [];
+      c.root.traverse(o => { if (o.name === 'Boot') ys.push(new THREE.Box3().setFromObject(o).min.y); });
+      assert.equal(ys.length, 2);
+      return ys;
+    };
+    c.pose(base);
+    const [l0, r0] = boots();
+    assert.ok(Math.abs(l0 - r0) < .01, 'feet level when standing');
+    c.pose({ ...base, grounded: false, vy: 5 });
+    for (const y of boots()) assert.ok(y > l0 + .12, `boot only ${(y - l0).toFixed(2)} m up in the jump pose`);
+    c.pose({ ...base, gait: Math.PI / 2, walkWeight: 1 });
+    const [l1, r1] = boots();
+    assert.ok(Math.abs(l1 - r1) > .03, 'run pose lifts one foot');
+  } finally { c.dispose(); }
+});
+
+test('firing shows a brief muzzle flash and a recoil that settles', () => {
+  const r = makeRifle();
+  try {
+    assert.equal(r.flashVisible, false);
+    r.fire();
+    assert.equal(r.flashVisible, true);
+    assert.equal(r.recoil, 1);
+    r.tick(.1);
+    assert.equal(r.flashVisible, false, 'flash lasts well under 0.1 s');
+    assert.ok(r.recoil > 0 && r.recoil < 1);
+    r.tick(.3);
+    assert.equal(r.recoil, 0);
+    r.fire(); r.reset();
+    assert.equal(r.flashVisible, false);
+    assert.equal(r.recoil, 0);
+  } finally { r.dispose(); }
+});
+
+test('dispose releases every geometry and material, and is safe to call twice', () => {
+  const disposed = new Set<unknown>();
+  const c = makeCharacter();
+  const owned = new Set<THREE.BufferGeometry | THREE.Material>();
+  c.root.traverse(o => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh) { owned.add(m.geometry); owned.add(m.material as THREE.Material); }
+  });
+  for (const item of owned) item.addEventListener('dispose', () => disposed.add(item));
+  c.dispose();
+  c.dispose();
+  assert.equal(disposed.size, owned.size, `${owned.size - disposed.size} resources not disposed`);
+  assert.equal(c.root.parent, null);
+});
+
+test('scene integration: exactly one character, rebuilt cleanly each mount', () => {
+  for (let mount = 0; mount < 3; mount++) {
+    const world = makeHillsideScene();
+    try {
+      const found: THREE.Object3D[] = [];
+      world.scene.traverse(o => { if (o.name === 'Player character') found.push(o); });
+      assert.equal(found.length, 1);
+      assert.equal(world.mannequin, world.character.root);
+      assert.ok(world.character.root.getObjectByName('Hunting rifle (original)'));
+    } finally { world.dispose(); }
+  }
+});
+
+test('preview wiring: pose each frame, fire triggers recoil, reset clears it, no old leg pivots', () => {
+  const preview = src('../packages/gameplay/HillsidePreview.tsx');
+  assert.match(preview, /world\.character\.pose\(\{ grounded: player\.grounded, gait, walkWeight, vy: player\.vy, pitch,/);
+  assert.match(preview, /world\.character\.tick\(dt\)/);
+  const fire = preview.slice(preview.indexOf('function fire'), preview.indexOf('function lockChanged'));
+  assert.match(fire, /world\.character\.fire\(\)/);
+  const reset = preview.slice(preview.indexOf('function reset'), preview.indexOf('function fire'));
+  assert.match(reset, /world\.character\.reset\(\)/);
+  assert.doesNotMatch(preview, /legPivots/);
+  // Hit detection is untouched: still the camera ray.
+  assert.match(fire, /rayHitsTarget\(camera\.position, aim\)/);
+});

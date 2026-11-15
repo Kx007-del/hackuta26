@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { makeCharacter } from './character';
 
 export const RAMP_HEADING = THREE.MathUtils.degToRad(265);
 export const RIDGE_HEADING = THREE.MathUtils.degToRad(200);
@@ -641,61 +641,10 @@ export function makeHillsideScene() {
   box(hut, roof, [1.07, 2.25, .1], [-.66, 1.18, 2.13]);
   box(hut, wood[1], [1.81, .22, .8], [-.66, .17, 2.25]);
 
-  // Original jointed mannequin and simple carried rifle. A separate walk pose
-  // keeps the carried silhouette stable while the legs animate.
-  const mannequin = new THREE.Group();
-  scene.add(mannequin);
-  const suit = paint('#72d4dc', .6);
-  const armor = paint('#99eee8', .56);
-  const joints = paint('#346f86');
-  const dark = paint('#274653', .65, .14);
-  const rifleStock = paint('#56665d');
-  function rounded(parent: THREE.Object3D, mat: THREE.Material, w:number,h:number,d:number,r:number,x:number,y:number,z:number) {
-    const mesh = new THREE.Mesh(geometry(new RoundedBoxGeometry(w,h,d,2,r)),mat);
-    mesh.position.set(x,y,z);
-    parent.add(mesh);
-    return mesh;
-  }
-  rounded(mannequin, suit, .53,.58,.32,.115,0,1.27,0);
-  rounded(mannequin, armor, .39,.26,.12,.055,0,1.4,.155);
-  rounded(mannequin, joints, .46,.26,.31,.08,0,.93,0);
-  rounded(mannequin, dark, .47,.08,.32,.026,0,1.04,.007);
-  rounded(mannequin, joints, .22,.18,.22,.07,0,1.58,0);
-  rounded(mannequin, armor, .39,.39,.36,.103,0,1.79,-.012);
-  rounded(mannequin, joints, .25,.082,.038,.021,0,1.78,-.177);
-  for(const sign of [-1,1]) rounded(mannequin, joints, .043,.13,.16,.018,sign*.188,1.78,0);
-  const legPivots: THREE.Group[] = [];
-  for (const x of [-.135,.135]) {
-    const leg = new THREE.Group();
-    leg.position.set(x,.92,.015);
-    mannequin.add(leg);
-    rounded(leg,suit,.208,.43,.226,.071,0,-.235,0);
-    rounded(leg,joints,.19,.172,.21,.057,0,-.481,-.009);
-    rounded(leg,armor,.19,.319,.195,.06,0,-.65,.012);
-    rounded(leg,dark,.214,.13,.34,.045,0,-.845,-.04);
-    legPivots.push(leg);
-  }
-  function limb(mat: THREE.Material, width: number, depth: number, a: THREE.Vector3, b: THREE.Vector3) {
-    const direction = b.clone().sub(a);
-    const midpoint = a.clone().lerp(b,.5);
-    const mesh = rounded(mannequin, mat, width, direction.length()+width*.48, depth, Math.min(width,depth)*.38,midpoint.x,midpoint.y,midpoint.z);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction.normalize());
-  }
-  limb(suit,.175,.19,new THREE.Vector3(.29,1.46,-.035),new THREE.Vector3(.354,1.24,-.19));
-  limb(armor,.145,.156,new THREE.Vector3(.354,1.24,-.19),new THREE.Vector3(.292,1.39,-.402));
-  limb(suit,.175,.19,new THREE.Vector3(-.29,1.46,-.04),new THREE.Vector3(-.233,1.26,-.29));
-  limb(armor,.141,.153,new THREE.Vector3(-.233,1.26,-.29),new THREE.Vector3(.158,1.37,-.66));
-  const rifle = new THREE.Group();
-  rifle.position.set(.26,1.40,-.29);
-  rifle.rotation.x = .075;
-  mannequin.add(rifle);
-  rounded(rifle, rifleStock,.126,.118,.39,.021,0,-.006,-.08);
-  rounded(rifle, dark,.085,.105,.27,.015,0,.005,-.31);
-  rounded(rifle, rifleStock,.092,.083,.31,.016,0,-.028,-.52);
-  box(rifle,dark,[.044,.043,.71],[0,.017,-.63]);
-  box(rifle,dark,[.055,.017,.16],[0,.073,-.32]);
-  box(rifle,joints,[.035,.042,.032],[0,.054,-.91]);
-  rounded(rifle, dark,.066,.13,.077,.014,0,-.08,-.21);
+  // Original stylized character holding an original bolt-action rifle (character.ts, rifle.ts).
+  const character = makeCharacter();
+  scene.add(character.root);
+  const mannequin = character.root;
 
   const playerShadow = new THREE.Mesh(geometry(new THREE.PlaneGeometry(1.36,1.15)),material(new THREE.ShaderMaterial({
     transparent:true,depthWrite:false,
@@ -732,12 +681,13 @@ export function makeHillsideScene() {
   target.add(band);
 
   return {
-    scene, mannequin, legPivots, playerShadow, ridgePoint, cone, target,
+    scene, mannequin, character, playerShadow, ridgePoint, cone, target,
     dispose() {
       for(const mesh of instances) mesh.dispose();
       for(const value of geometries) value.dispose();
       for(const value of materials) value.dispose();
       woodGrain.dispose();
+      character.dispose();
       scene.clear();
     },
   };
