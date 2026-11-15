@@ -25,7 +25,7 @@ function go(path: string) {
 }
 function nextPage() {
   const candidate = new URLSearchParams(window.location.search).get('next') ?? '';
-  return /^\/(?:practice|leaderboards|events(?:\/[A-Za-z0-9-]+)?|host(?:\/events\/[A-Za-z0-9_-]+)?)?$/.test(candidate) ? candidate : '/account';
+  return /^\/(?:practice|leaderboards(?:\/badges)?|events(?:\/[A-Za-z0-9-]+)?|host(?:\/events\/[A-Za-z0-9_-]+)?)?$/.test(candidate) ? candidate : '/account';
 }
 export function AccountLink({ path }: { path: string }) {
   const { session } = useAccount();
@@ -71,7 +71,7 @@ export default function AccountPage({ mode }: { mode: 'login' | 'signup' | 'acco
       {!session && !loadError ? <p role="status">Loading your account…</p> : session?.account ? <>
         <p className="showcase-eyebrow">YOUR ACCOUNT</p><h2>{session.account.name}</h2>
         <p>Signed in as <b>{session.account.username}</b></p>
-        <div className="auth-account-actions"><a className="showcase-start" href="/practice">Take the shot ↗</a><a href="/leaderboards">Your progress</a><a href="/host">Manage your events</a></div>
+        <div className="auth-account-actions"><a className="showcase-start" href="/practice">Take the shot ↗</a><a href="/leaderboards">Your progress</a><a href="/leaderboards/badges">Your badges</a><a href="/host">Manage your events</a></div>
         <button className="auth-secondary" type="button" disabled={busy} onClick={() => void logout()}>Sign out</button>
       </> : <>
         <nav className="auth-mode" aria-label="Account options"><a href={`/login${next}`} aria-current={!signup ? 'page' : undefined}>Sign in</a><a href={`/signup${next}`} aria-current={signup ? 'page' : undefined}>Create account</a></nav>

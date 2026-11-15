@@ -18,7 +18,7 @@ export function eventCode(input: string) {
   return /^[A-Za-z0-9-]+$/.test(value) ? value : '';
 }
 export function activeTab(path: string) {
-  if (path === '/leaderboards') return 'Leaderboards';
+  if (path === '/leaderboards' || path === '/leaderboards/badges') return 'Leaderboards';
   if (path === '/events' || path.startsWith('/events/')) return 'Join Events';
   if (path === '/host' || path.startsWith('/host/')) return 'Host an Event';
   return 'Play';

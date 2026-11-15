@@ -7,6 +7,7 @@ import type { AttemptTelemetry } from '../packages/showcase-scoring/telemetry';
 test('navigation maps nested routes to the proper tab; event code/link parsing rejects foreign path shapes', () => {
   for (const path of ['/', '/play', '/practice', '/results']) assert.equal(activeTab(path), 'Play');
   assert.equal(activeTab('/leaderboards'), 'Leaderboards');
+  assert.equal(activeTab('/leaderboards/badges'), 'Leaderboards');
   assert.equal(activeTab('/events/ABC123'), 'Join Events');
   assert.equal(activeTab('/host/events/event-123'), 'Host an Event');
   assert.equal(eventCode(' abcDEF123456 '), 'abcDEF123456');

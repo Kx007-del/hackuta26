@@ -79,3 +79,11 @@ test('account routes are optional and preserve the public play and event navigat
     for (const label of ['Play', 'Leaderboards', 'Join Events', 'Host an Event']) assert.ok(html.includes(`>${label}</a>`));
   }
 });
+
+
+test('badge collection is a separate routable view under Leaderboards', () => {
+  const html = renderToStaticMarkup(createElement(FortniteShowcase, { path: '/leaderboards/badges', search: '' }));
+  assert.match(html, /My Badge Collection/);
+  assert.match(html, /aria-current="page">Leaderboards/);
+  assert.doesNotMatch(html, /Page not found|<video|Highest Score showcase leaderboard/);
+});
