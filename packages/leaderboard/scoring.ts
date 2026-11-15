@@ -91,6 +91,8 @@ export type LeaderboardRow = {
   rotationDegrees: number;
   shotTimeMs: number;
   fumble: FumbleKind | null;
+  /** true: ALIGN AIM was used; null: unknown (older clients/rows). Only false ranks in skill categories. */
+  assisted: boolean | null;
   createdAt: string;
 };
 
@@ -127,8 +129,10 @@ function bestPerPlayer(rows: LeaderboardRow[], better: (a: LeaderboardRow, b: Le
 }
 
 export function buildLeaderboard(rows: LeaderboardRow[], limit = 10): LeaderboardCategory[] {
-  const landed = rows.filter(r => r.success);
-  const missed = rows.filter(r => !r.success && r.fumble);
+  // Practice-assisted or unknown attempts never rank; they still count towards "Never gives up".
+  const ranked = rows.filter(r => r.assisted === false);
+  const landed = ranked.filter(r => r.success);
+  const missed = ranked.filter(r => !r.success && r.fumble);
   const entry = (row: LeaderboardRow, rank: number, value: string, detail = describe(row)): LeaderboardEntry =>
     ({ rank, player: row.player, value, detail, arenaId: row.arenaId, templateId: row.templateId, targetDistance: row.targetDistance });
 
@@ -157,10 +161,10 @@ export function buildLeaderboard(rows: LeaderboardRow[], limit = 10): Leaderboar
     .map((c, i) => entry(c.row, i + 1, `${c.attempts} attempt${c.attempts === 1 ? '' : 's'}`, `${c.landed} landed`));
 
   return [
-    { id: 'closest', title: 'Closest hit', description: 'Landed shots nearest the bullseye.', entries: closest },
+    { id: 'closest', title: 'Closest hit', description: 'Landed shots nearest the bullseye, without the aim assist.', entries: closest },
     { id: 'fumbles', title: 'Funniest fumbles', description: 'The wildest misses, one per player.', entries: fumbles },
     { id: 'fastest', title: 'Quickest draw', description: 'Fastest landed shots from the start of the attempt.', entries: fastest },
     { id: 'spin', title: 'Most spin', description: 'Most rotation on a landed Rooftop shot.', entries: spin },
-    { id: 'grinders', title: 'Never gives up', description: 'Most attempts posted.', entries: grinders },
+    { id: 'grinders', title: 'Never gives up', description: 'Most attempts posted, assisted ones included.', entries: grinders },
   ];
 }

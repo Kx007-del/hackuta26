@@ -192,7 +192,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
     let x=dashPeek?-4:0,y=1.7,z=dashPeek?-2.8:3,yaw=0,pitch=0,vy=0;
     let air=false,hasJumped=false,takeoffYaw=0,finished=false,ready=false;
     let builds=0,dashes=0,edited=false,ads=false,speed=0,dashLeft=0;
-    let dashCleared=false,rampTakeoff=false,firePending=false;
+    let dashCleared=false,rampTakeoff=false,firePending=false,assisted=false;
     let started=performance.now(),last=started,lastRecord=0,lastHud=0,raf=0,disposed=false,replayEnded=false;
     let frames:ReplayFrame[]=[],shotTime=-1,replayShotShown=false;
     let shotEffectAt=-Infinity,impactEffectAt=-Infinity;
@@ -208,7 +208,7 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
       if(replay)return;
       x=dashPeek?-4:0;y=1.7;z=dashPeek?-2.8:3;vy=0;yaw=requiredSpinDegrees===180?Math.PI:0;pitch=0;
       air=false;hasJumped=false;takeoffYaw=yaw;finished=false;keys.clear();
-      builds=0;dashes=0;edited=false;ads=false;speed=0;dashLeft=0;dashCleared=false;rampTakeoff=false;firePending=false;
+      builds=0;dashes=0;edited=false;ads=false;speed=0;dashLeft=0;dashCleared=false;rampTakeoff=false;firePending=false;assisted=false;
       started=performance.now();lastRecord=0;frames=[snapshot(0)];shotTime=-1;target.material=red;
       shotEffectAt=impactEffectAt=-Infinity;
       showBuild(0,false);message=objective;updateHud();
@@ -283,13 +283,13 @@ export default function GameArena({config,onComplete,replay,onReplayEnd}:Props){
       shotEffectAt=now;
       if(hit)impactEffectAt=now;
       finished=true;frames.push(snapshot(shotTime));if(hit)target.material=blue;updateHud();
-      callbacks.current.onComplete({id:crypto.randomUUID(),config:{...config},success,targetHit:hit,airborneAtShot:air,rotationDegrees:spin,durationMs:shotTime,frames:[...frames],shotTimeMs:shotTime,...(roof?{}:{mechanicState})});
+      callbacks.current.onComplete({id:crypto.randomUUID(),config:{...config},success,targetHit:hit,airborneAtShot:air,rotationDegrees:spin,durationMs:shotTime,frames:[...frames],shotTimeMs:shotTime,...(roof?{}:{mechanicState}),assisted});
       if(document.pointerLockElement===renderer.domElement)document.exitPointerLock();
     }
     actions.current={enter,jump,fire,reset,build,edit,dash,aim,keyboard:()=>{if(!replay){start();updateHud();}},align:()=>{
       if(replay||finished||(roof&&requiredSpinDegrees>0))return; start();
       const direction=targetPosition.clone().sub(new THREE.Vector3(x,y,z)).normalize();
-      yaw=Math.atan2(-direction.x,-direction.z);pitch=Math.asin(direction.y);message='Practice aim aligned. Complete the required movement and fire.';updateHud();
+      yaw=Math.atan2(-direction.x,-direction.z);pitch=Math.asin(direction.y);assisted=true;message='Practice aim aligned. Complete the required movement and fire. Assisted shots are not ranked.';updateHud();
     }};
     function keydown(e:KeyboardEvent){if(replay)return;const active=document.activeElement;const locked=document.pointerLockElement===renderer.domElement;if(!locked&&active!==arena.current&&active!==renderer.domElement)return;if((e.target as HTMLElement)?.closest('input,textarea,select,button,a'))return;
       if(['Space','KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','KeyF','KeyR','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyB','KeyG','KeyX','KeyC'].includes(e.code))e.preventDefault();

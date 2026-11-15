@@ -3,6 +3,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import type { AddressInfo } from 'node:net';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { evaluateShot } from '../packages/gameplay/shotRules.ts';
 import { aimMiss, attemptMetrics, buildLeaderboard, type LeaderboardRow } from '../packages/leaderboard/scoring.ts';
 import { MAX_LEADERBOARD_ROWS, registerLeaderboardApi } from '../packages/leaderboard/server.ts';
@@ -23,7 +27,7 @@ function attempt(config: ChallengeConfig, offset: number, success: boolean, extr
   const hit = Math.abs(offset) < 1;
   return {
     id: `a${++seq}`, config: { ...config }, success, targetHit: success || (extra.targetHit ?? hit), airborneAtShot: config.arenaId !== 'tactical-v1',
-    rotationDegrees: config.requiredSpinDegrees, durationMs: 2000, shotTimeMs: 1500,
+    rotationDegrees: config.requiredSpinDegrees, durationMs: 2000, shotTimeMs: 1500, assisted: false,
     frames: [{ t: 0, x: 0, y: 1.7, z: 3, yaw: 0, pitch: 0 }, { t: 1500, ...aim }],
     ...(config.arenaId === 'rooftop-v1' ? {} : { mechanicState: { builds: 1, dashes: 1, speedAtShot: 0, edited: true } }),
     ...extra,
@@ -72,7 +76,7 @@ test('fumble labels describe the shot, not the player', () => {
 
 const row = (player: string, over: Partial<LeaderboardRow> = {}): LeaderboardRow => ({
   id: `${player}-${++seq}`, player, arenaId: 'rooftop-v1', templateId: 'jump', targetDistance: 14, success: true,
-  missMeters: 0.5, rotationDegrees: 0, shotTimeMs: 2000, fumble: null, createdAt: `2026-11-15T03:00:${String(seq % 60).padStart(2, '0')}.000Z`, ...over,
+  missMeters: 0.5, rotationDegrees: 0, shotTimeMs: 2000, fumble: null, assisted: false, createdAt: `2026-11-15T03:00:${String(seq % 60).padStart(2, '0')}.000Z`, ...over,
 });
 
 test('categories rank correctly, keep one entry per player and cap at the limit', () => {
@@ -154,4 +158,65 @@ test('storage is capped: the oldest rows are dropped beyond maxRows', async () =
     const players = board.categories.find((c: { id: string }) => c.id === 'grinders').entries.map((e: { player: string }) => e.player).sort();
     assert.deepEqual(players, ['P3', 'P4', 'P5', 'P6', 'P7']);
   }, 5);
+});
+
+test('assisted and unknown-assist attempts never rank, but still count as attempts', () => {
+  const rows = [
+    row('Fair', { missMeters: 0.3, shotTimeMs: 1500 }),
+    row('Assist', { missMeters: 0.0, shotTimeMs: 12, assisted: true }),
+    row('Legacy', { missMeters: 0.01, shotTimeMs: 20, assisted: null }),
+    row('AssistMiss', { success: false, missMeters: 30, fumble: 'sky', assisted: true }),
+    row('Spinner', { templateId: 'spin360', rotationDegrees: 999, assisted: true }),
+  ];
+  const board = Object.fromEntries(buildLeaderboard(rows).map(c => [c.id, c.entries.map(e => e.player)]));
+  assert.deepEqual(board.closest, ['Fair']);
+  assert.deepEqual(board.fastest, ['Fair']);
+  assert.deepEqual(board.fumbles, []);
+  assert.deepEqual(board.spin, []);
+  assert.equal(board.grinders.length, 5, 'every attempt still counts towards Never gives up');
+});
+
+test('API ranks only attempts that report assisted:false', async () => {
+  await withServer(async base => {
+    const assisted = await (await post(base, { playerName: 'A', attempt: attempt(rooftop, 0, true, { assisted: true }) })).json();
+    const missing = attempt(rooftop, 0.1, true); delete (missing as { assisted?: boolean }).assisted;
+    const unknown = await (await post(base, { playerName: 'B', attempt: missing })).json();
+    const fair = await (await post(base, { playerName: 'C', attempt: attempt(rooftop, 0.5, true) })).json();
+    assert.deepEqual([assisted.ranked, unknown.ranked, fair.ranked], [false, false, true]);
+    assert.equal((await post(base, { playerName: 'D', attempt: attempt(rooftop, 0, true, { assisted: 'yes' as unknown as boolean }) })).status, 400);
+    const board = await (await fetch(`${base}/api/leaderboard`)).json();
+    assert.deepEqual(board.categories.find((c: { id: string }) => c.id === 'closest').entries.map((e: { player: string }) => e.player), ['C']);
+    assert.equal(board.attempts, 3);
+  });
+});
+
+test('an existing leaderboard table gains the assisted column; old rows stay unranked', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lb-migrate-'));
+  const file = join(dir, 'db.sqlite');
+  try {
+    const old = new DatabaseSync(file);
+    old.exec(`CREATE TABLE leaderboard_attempts (id TEXT PRIMARY KEY, player TEXT NOT NULL, arena_id TEXT NOT NULL, template_id TEXT NOT NULL,
+      target_distance INTEGER NOT NULL, success INTEGER NOT NULL, miss_m REAL NOT NULL, rotation REAL NOT NULL, shot_ms REAL NOT NULL, fumble TEXT, created_at TEXT NOT NULL);
+      INSERT INTO leaderboard_attempts VALUES ('old1','OldTimer','rooftop-v1','jump',14,1,0.01,0,12,NULL,'2026-11-15T03:00:00.000Z');`);
+    old.close();
+    const app = express(); app.use(express.json());
+    const close = registerLeaderboardApi(app, { databasePath: file });
+    const server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r));
+    try {
+      const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      assert.equal((await post(base, { playerName: 'New', attempt: attempt(rooftop, 0.4, true) })).status, 201);
+      const board = await (await fetch(`${base}/api/leaderboard`)).json();
+      assert.equal(board.attempts, 2);
+      assert.deepEqual(board.categories.find((c: { id: string }) => c.id === 'closest').entries.map((e: { player: string }) => e.player), ['New']);
+    } finally { server.close(); close(); }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('GameArena marks ALIGN AIM attempts as assisted, resets the flag per attempt and always reports it', () => {
+  const src = readFileSync(resolve(import.meta.dirname, '../packages/gameplay/GameArena.tsx'), 'utf8');
+  const align = src.slice(src.indexOf('align:()=>{'), src.indexOf('}};', src.indexOf('align:()=>{')));
+  assert.match(align, /start\(\);[\s\S]*assisted=true/, 'align starts the attempt, then marks it assisted');
+  const reset = src.slice(src.indexOf('function reset(){'), src.indexOf('function start(){'));
+  assert.match(reset, /assisted=false/, 'each new attempt starts unassisted');
+  assert.match(src, /callbacks\.current\.onComplete\(\{[^}]*\}[^;]*assisted\}\)/, 'onComplete always includes assisted');
 });

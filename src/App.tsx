@@ -263,7 +263,12 @@ export default function App() {
     if (!boardOptIn || !player) return;
     setBoardStatus('Posting to the leaderboard…');
     postLeaderboardAttempt(player, result)
-      .then(() => { setBoardStatus(result.success ? 'Landed shot posted to the leaderboard.' : 'Miss posted to the leaderboard. Check the fumbles board.'); setBoardVersion(v => v + 1); })
+      .then(saved => {
+        setBoardStatus(!saved.ranked
+          ? 'Attempt counted, but Align Aim was used, so it is not ranked.'
+          : result.success ? 'Landed shot posted to the leaderboard.' : 'Miss posted to the leaderboard. Check the fumbles board.');
+        setBoardVersion(v => v + 1);
+      })
       .catch(cause => setBoardStatus(cause instanceof Error ? cause.message : 'Could not post to the leaderboard.'));
   }
 
