@@ -1,6 +1,10 @@
 {
   "role": "claude-1",
-  "lease": null,
-  "status": "not-connected",
+  "lease": {
+    "session": "6d8681a1-b701-4eff-b8e7-5919bfa37ece",
+    "at": "2026-11-15T00:01:40.902Z",
+    "machine": "KrunalMadhani"
+  },
+  "status": "waiting",
   "results": {}
 }
