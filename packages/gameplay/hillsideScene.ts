@@ -32,6 +32,9 @@ const ridgeForward = new THREE.Vector2(Math.sin(RIDGE_HEADING), -Math.cos(RIDGE_
 const ridgeRight = new THREE.Vector2(Math.cos(RIDGE_HEADING), Math.sin(RIDGE_HEADING));
 const hutPosition = rampForward.clone().multiplyScalar(19).addScaledVector(rampRight, 13.2);
 
+/** The ridge crest sits just beyond the target so the dummy stands on the slope facing the shooting spot. */
+const HILL_ALONG = (rampForward.x * CONE_CENTER * ridgeForward.x + rampForward.y * CONE_CENTER * ridgeForward.y) + RIDGE_DISTANCE + 5;
+
 function bell(value: number, width: number) {
   return Math.exp(-((value / width) ** 2));
 }
@@ -39,7 +42,7 @@ function bell(value: number, width: number) {
 export function terrainHeight(x: number, z: number) {
   const along = x * ridgeForward.x + z * ridgeForward.y;
   const across = x * ridgeRight.x + z * ridgeRight.y;
-  const hill = 14.1 * bell(along - 61, 26) * bell(across + 4, 52);
+  const hill = 14.1 * bell(along - HILL_ALONG, 26) * bell(across + 4, 52);
   const shoulder = 9.6 * bell(along - 40, 34) * bell(across - 33, 21);
   const leftBank = 7.8 * bell(along - 48, 28) * bell(across + 36, 24);
   const west = x * rampForward.x + z * rampForward.y;
@@ -71,6 +74,15 @@ function overlapsHut(x: number, z: number, padding: number) {
 
 export const SPAWN_POINT = { x: rampForward.x * SPAWN_V, z: rampForward.y * SPAWN_V };
 export const spawnHeight = RAMP_TOP;
+
+/** Where the clip's shot is fired from: on the landing, at the cone. The target is 61 m from here. */
+export const SHOT_SPOT = { x: rampForward.x * CONE_CENTER, z: rampForward.y * CONE_CENTER };
+
+/** True when a player at (x, y, z) is standing on the wooden build (platform, ramp, landing or cone). */
+export function standingOnBuild(x: number, z: number, y: number) {
+  const deck = deckHeight(x, z, PLAYER_RADIUS);
+  return deck !== undefined && deck > terrainHeight(x, z) && Math.abs(y - deck) <= STEP_UP + .05;
+}
 
 /** The build is solid from the side and underneath; only its top surface can be walked on. */
 export function walkHeight(x: number, z: number, previousHeight: number) {
@@ -217,11 +229,20 @@ export function stepPlayer(state: PlayerState, input: PlayerInput, dt: number): 
 export const TARGET_HEIGHT = 1.9;
 export const TARGET_RADIUS = .42;
 export const targetBase = (() => {
-  const x = ridgeForward.x * RIDGE_DISTANCE, z = ridgeForward.y * RIDGE_DISTANCE;
+  // 61 m horizontally from the shooting spot on the landing, at the reference bearing (~200°).
+  const x = SHOT_SPOT.x + ridgeForward.x * RIDGE_DISTANCE, z = SHOT_SPOT.z + ridgeForward.y * RIDGE_DISTANCE;
   return new THREE.Vector3(x, terrainHeight(x, z), z);
 })();
 
-/** Hitscan against the standing target (a vertical cylinder). Terrain blocks the shot. */
+/** Solid scenery a shot cannot pass through: terrain, the wooden build and the hut. */
+function blocksShot(x: number, y: number, z: number) {
+  if (y < terrainHeight(x, z)) return true;
+  const deck = deckHeight(x, z);
+  if (deck !== undefined && y < deck) return true;
+  return y < hutTop && overlapsHut(x, z, 0);
+}
+
+/** Hitscan against the standing target (a vertical cylinder). Terrain, the build and the hut block the shot. */
 export function rayHitsTarget(origin: THREE.Vector3, direction: THREE.Vector3, base = targetBase) {
   const d = direction.clone().normalize();
   const ox = origin.x - base.x, oz = origin.z - base.z;
@@ -239,9 +260,8 @@ export function rayHitsTarget(origin: THREE.Vector3, direction: THREE.Vector3, b
     if (y >= base.y && y <= base.y + TARGET_HEIGHT) { hitAt = t; break; }
   }
   if (hitAt === undefined) return false;
-  for (let t = 1; t < hitAt - TARGET_RADIUS; t += .5) {
-    const x = origin.x + d.x * t, y = origin.y + d.y * t, z = origin.z + d.z * t;
-    if (y < terrainHeight(x, z)) return false;
+  for (let t = .25; t < hitAt - TARGET_RADIUS; t += .25) {
+    if (blocksShot(origin.x + d.x * t, origin.y + d.y * t, origin.z + d.z * t)) return false;
   }
   return true;
 }

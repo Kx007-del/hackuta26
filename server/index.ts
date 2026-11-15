@@ -4,11 +4,14 @@ import { fileURLToPath } from "node:url";
 import { apiErrorHandler, registerApi } from "../packages/social/server";
 import { registerClipApi } from "../packages/social/clips";
 import { registerLeaderboardApi } from "../packages/leaderboard/server";
+import { registerShowcaseScoring } from "../packages/showcase-scoring/server";
 import { resolveRuntimeConfig } from "./runtime-config";
 const { host, port, commit } = resolveRuntimeConfig(process.env);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
 app.disable("x-powered-by");
+// Render sits behind one proxy hop; trust it so per-client rate limits see the real client address.
+if (process.env.RENDER === "true") app.set("trust proxy", 1);
 const clips = registerClipApi(app);
 app.use(express.json({ limit: "2mb" }));
 app.get("/api/health", (_req, res) =>
@@ -16,6 +19,7 @@ app.get("/api/health", (_req, res) =>
 );
 const cleanup = registerApi(app, { clipLookup: clips.get });
 const closeLeaderboard = registerLeaderboardApi(app);
+registerShowcaseScoring(app);
 app.use("/api", (_req, res) =>
   res.status(404).json({ error: "Unknown API route" }),
 );

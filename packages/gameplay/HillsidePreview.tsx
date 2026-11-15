@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { clipShoulderCamera, makeHillsideScene, RAMP_HEADING, rayHitsTarget, spawnPlayer, stepPlayer, type PlayerState } from './hillsideScene';
+import { createAttemptRecorder, readConsent, submitScore, writeConsent, type AiConsent, type ScoreResponse } from '../showcase-scoring/client';
+import type { AttemptTelemetry } from '../showcase-scoring/telemetry';
 
 type PreviewControls = { reset: () => void };
+type Scoring = { state: 'idle' } | { state: 'scoring' } | { state: 'done'; result: ScoreResponse } | { state: 'error'; message: string };
+/** Turning faster than this (rad/s) counts as "still turning" for the aim-hold measure. */
+const TURNING_RATE = .6;
+/** Keep recording briefly after the shot so the hit is in the clip. */
+const AFTER_SHOT_MS = 800;
 type ShotResult = { hit: boolean; distance: number; airborne: boolean; id: number };
 
 const CAMERA_FOV = 50;
@@ -39,6 +46,17 @@ export default function HillsidePreview() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [shot, setShot] = useState<ShotResult>();
+  const [consent, setConsent] = useState<AiConsent>(readConsent);
+  const consentRef = useRef<AiConsent>(consent);
+  const [scoring, setScoring] = useState<Scoring>({ state: 'idle' });
+  const [recordingSupported, setRecordingSupported] = useState(true);
+
+  function chooseConsent(value: 'yes' | 'no') {
+    consentRef.current = value;
+    setConsent(value);
+    writeConsent(value);
+    controls.current?.reset();
+  }
 
   useEffect(() => {
     const container = mount.current;
@@ -80,6 +98,12 @@ export default function HillsidePreview() {
     let gait = 0, walkWeight = 0, jumpQueued = false, cooldown = 0, shotId = 0, targetDown = false, fall = 0;
     let lookHeld = 0;
     let frame = 0, lastTime = performance.now(), disposed = false;
+    // Attempt tracking for scoring: one shot per attempt, measured from the last reset.
+    const recorder = createAttemptRecorder(canvas);
+    setRecordingSupported(recorder.supported);
+    let attemptStart = performance.now(), startHeading = RAMP_HEADING, lastTurnAt = performance.now(), lastHeading = RAMP_HEADING;
+    let shotsThisAttempt = 0, scoreRequest: AbortController | undefined;
+    const startRecording = () => { if (consentRef.current === 'yes') recorder.start(); else recorder.cancel(); };
 
     function repaint() {
       const { x, y, z } = player;
@@ -138,18 +162,48 @@ export default function HillsidePreview() {
       fov = CAMERA_FOV;
       jumpQueued = targetDown = false;
       setShot(undefined);
+      scoreRequest?.abort();
+      scoreRequest = undefined;
+      shotsThisAttempt = 0;
+      attemptStart = lastTurnAt = performance.now();
+      startHeading = lastHeading = heading;
+      setScoring({ state: 'idle' });
+      startRecording();
       canvas.focus({ preventScroll: true });
       repaint();
     }
 
     function fire() {
-      if (cooldown > 0 || targetDown) return;
+      // One shot per attempt (brief §5.2 S7): Reset or R starts the next attempt.
+      if (cooldown > 0 || targetDown || shotsThisAttempt > 0) return;
       cooldown = FIRE_COOLDOWN;
+      shotsThisAttempt = 1;
       camera.getWorldDirection(aim);
       const hit = rayHitsTarget(camera.position, aim);
       const distance = Math.hypot(world.target.position.x - player.x, world.target.position.z - player.z);
       if (hit) targetDown = true;
       setShot({ hit, distance, airborne: !player.grounded, id: ++shotId });
+      const shotAt = performance.now();
+      const telemetry: AttemptTelemetry = {
+        version: 1, shots: 1, ads: false, hit,
+        startHeading, shotHeading: heading,
+        aimHoldMs: Math.round(shotAt - lastTurnAt), elapsedMs: Math.round(shotAt - attemptStart),
+        shooter: { x: player.x, y: player.y, z: player.z, grounded: player.grounded },
+        ray: { origin: [camera.position.x, camera.position.y, camera.position.z], direction: [aim.x, aim.y, aim.z] },
+      };
+      const request = new AbortController();
+      scoreRequest = request;
+      setScoring({ state: 'scoring' });
+      window.setTimeout(async () => {
+        if (disposed || request.signal.aborted) return;
+        const clip = consentRef.current === 'yes' ? await recorder.finish() : undefined;
+        try {
+          const result = await submitScore(telemetry, clip?.blob, consentRef.current, request.signal);
+          if (!request.signal.aborted && !disposed) setScoring({ state: 'done', result });
+        } catch (cause) {
+          if (!request.signal.aborted && !disposed) setScoring({ state: 'error', message: cause instanceof Error ? cause.message : 'Scoring is unavailable right now.' });
+        }
+      }, AFTER_SHOT_MS);
     }
 
     function lockChanged() {
@@ -221,6 +275,12 @@ export default function HillsidePreview() {
       } else {
         lookHeld = 0;
       }
+      // Aim hold = time since the view last turned quickly (mouse or keys).
+      const turned = heading - lastHeading;
+      const turnRate = Math.abs(Math.atan2(Math.sin(turned), Math.cos(turned))) / Math.max(dt, 1e-3);
+      if (turnRate > TURNING_RATE && shotsThisAttempt === 0) lastTurnAt = now;
+      lastHeading = heading;
+      recorder.maintain(now);
       const forward = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
       const right = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
       player = stepPlayer(player, { forward, right, heading, jump: jumpQueued }, dt);
@@ -263,9 +323,12 @@ export default function HillsidePreview() {
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', clearInput);
     frame = requestAnimationFrame(animate);
+    startRecording();
 
     return () => {
       disposed = true;
+      scoreRequest?.abort();
+      recorder.dispose();
       cancelAnimationFrame(frame);
       observer.disconnect();
       canvas.removeEventListener('click', onCanvasClick);
@@ -285,8 +348,8 @@ export default function HillsidePreview() {
   }, []);
 
   const hint = notice || (captured
-    ? 'Click to fire · WASD move · Space jump · Esc release'
-    : 'Click the scene to aim · WASD move · Space jump · R reset');
+    ? 'Click to fire · one shot per attempt · Esc release'
+    : 'Click the scene to aim · WASD move · Space jump · F fire · R try again');
 
   return <div className="hillside-preview">
     <div className="hillside-stage" ref={stage}>
@@ -303,5 +366,62 @@ export default function HillsidePreview() {
       {!error && <p className="hillside-hint" id="hillside-controls">{hint}</p>}
       {error && <p className="hillside-error" role="alert">{error}</p>}
     </div>
+    {!error && <ScoringPanel consent={consent} onConsent={chooseConsent} scoring={scoring} recordingSupported={recordingSupported} />}
+  </div>;
+}
+
+function Bar({ label, value }: { label: string; value: number }) {
+  return <li className="score-bar"><span>{label}</span><span className="score-bar__track" aria-hidden="true"><span style={{ width: `${value}%` }} /></span><b>{value}</b></li>;
+}
+
+const AI_LABELS: Record<string, string> = { setup: 'Set-up', turn: 'Turn', aimHold: 'Aim hold', shot: 'Shot', timing: 'Timing' };
+const GAME_LABELS: Record<string, string> = { distance: 'Distance', turn: 'Turn', aimHold: 'Aim hold', onStructure: 'On the build', singleHipShot: 'One hip-fire shot' };
+const UNAVAILABLE: Record<string, string> = {
+  'no-key': 'AI scoring isn’t set up on this server yet.',
+  'rate-limited': 'AI scoring is busy right now.',
+  timeout: 'AI scoring took too long.',
+  'model-unavailable': 'The AI model isn’t available right now.',
+};
+
+function ScoringPanel({ consent, onConsent, scoring, recordingSupported }: { consent: AiConsent; onConsent: (v: 'yes' | 'no') => void; scoring: Scoring; recordingSupported: boolean }) {
+  return <section className="showcase-score" aria-labelledby="showcase-score-title">
+    <h3 id="showcase-score-title">How close was your shot?</h3>
+    {consent === undefined && <div className="showcase-score__consent">
+      <p>Score each attempt against the reference clip with AI? Your gameplay clip (game view only, no camera or mic) is sent to Google Gemini to compare it. It isn’t stored.</p>
+      <div className="showcase-score__choices">
+        <button type="button" onClick={() => onConsent('yes')}>Allow AI scoring</button>
+        <button type="button" onClick={() => onConsent('no')}>Game data only</button>
+      </div>
+    </div>}
+    {consent === 'yes' && !recordingSupported && <p className="showcase-score__note">This browser can’t record the game view, so attempts are scored on game data only.</p>}
+    <div role="status" aria-live="polite">
+      {scoring.state === 'idle' && <p className="showcase-score__note">Take one shot per attempt. Press R or Reset to try again.</p>}
+      {scoring.state === 'scoring' && <p className="showcase-score__note">Scoring…</p>}
+      {scoring.state === 'error' && <p className="showcase-score__note">{scoring.message}</p>}
+      {scoring.state === 'done' && <ScoreResult result={scoring.result} />}
+    </div>
+  </section>;
+}
+
+function ScoreResult({ result }: { result: ScoreResponse }) {
+  const { ai, telemetry } = result;
+  return <div className="showcase-score__result">
+    <p className="showcase-score__total"><b>{result.score}</b><span>/ 100</span>{!result.hit && <em>Missed — a miss scores 25 at most.</em>}</p>
+    {ai.status === 'ok' && <p className="showcase-score__feedback">{ai.feedback}</p>}
+    <div className="showcase-score__parts">
+      {ai.status === 'ok' && <div>
+        <h4>AI comparison <small>{ai.similarity}/100</small></h4>
+        <ul>{Object.entries(ai.components).map(([k, v]) => <Bar key={k} label={AI_LABELS[k] ?? k} value={v} />)}</ul>
+      </div>}
+      <div>
+        <h4>Game data <small>{telemetry.score}/100 · {telemetry.distanceM} m · turned {Math.abs(telemetry.turnDeg)}° {telemetry.turnDeg < 0 ? 'left' : 'right'}</small></h4>
+        <ul>{Object.entries(telemetry.components).map(([k, v]) => <Bar key={k} label={GAME_LABELS[k] ?? k} value={v} />)}</ul>
+      </div>
+    </div>
+    <p className="showcase-score__note">
+      {ai.status === 'ok' ? 'AI-estimated similarity to the reference — may be imperfect. Final score blends the AI comparison (60%) with game data (40%).'
+        : ai.status === 'declined' ? 'Scored on game data only.'
+        : `${UNAVAILABLE[ai.reason] ?? 'AI scoring is unavailable right now.'} Scored on game data only.`}
+    </p>
   </div>;
 }

@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import {
   terrainHeight, walkHeight, withinWalkArea, spawnHeight, clipShoulderCamera,
   RAMP_HEADING, RIDGE_HEADING, RIDGE_DISTANCE, makeHillsideScene,
-  spawnPlayer, stepPlayer, rayHitsTarget, targetBase, RUN_SPEED, GRAVITY, JUMP_SPEED, TARGET_HEIGHT, MAX_CLIMB_SLOPE,
+  spawnPlayer, stepPlayer, rayHitsTarget, targetBase, RUN_SPEED, GRAVITY, JUMP_SPEED, TARGET_HEIGHT, MAX_CLIMB_SLOPE, SHOT_SPOT,
   type PlayerState, type PlayerInput,
 } from '../packages/gameplay/hillsideScene';
 
@@ -44,13 +44,14 @@ test('spawn stands on the high platform at the top of the build, well above the 
   assert.equal(walkHeight(s.x, s.z, s.y), s.y);
 });
 
-test('ridge marker is 61 m away along the aim heading and above eye level', () => {
+test('ridge marker is 61 m from the shooting spot (landing/cone) along the aim heading and above eye level', () => {
   const world = makeHillsideScene();
   try {
     const { x, y, z } = world.ridgePoint;
     assert.equal(RIDGE_DISTANCE, 61);
-    assert.ok(Math.abs(Math.hypot(x, z) - RIDGE_DISTANCE) < 1e-6);
-    const bearing = Math.atan2(x, -z);
+    // Measured from where the clip's shot is fired (the landing/cone), not from spawn (Claude 1 review G1).
+    assert.ok(Math.abs(Math.hypot(x - SHOT_SPOT.x, z - SHOT_SPOT.z) - RIDGE_DISTANCE) < 1e-6);
+    const bearing = Math.atan2(x - SHOT_SPOT.x, -(z - SHOT_SPOT.z));
     assert.ok(Math.abs(THREE.MathUtils.euclideanModulo(bearing - RIDGE_HEADING + Math.PI, Math.PI * 2) - Math.PI) < 1e-6);
     assert.ok(y > spawnHeight + 1.55, `marker ${y} should sit above spawn eye level`);
     assert.equal(y, terrainHeight(x, z));
@@ -165,8 +166,10 @@ test('showcase is Fortnite-only: no GameArena, legacy arena or relay code is loa
 
 test('preview UI: only small Reset and Full screen controls; Esc releases pointer lock; cleanup releases it', () => {
   const preview = src('../packages/gameplay/HillsidePreview.tsx');
-  const buttons = preview.match(/<button\b/g) ?? [];
-  assert.equal(buttons.length, 2, 'only Reset and Full screen remain');
+  // The scene stage itself keeps only Reset and Full screen; the scoring consent buttons live in the panel below it.
+  const stage = preview.slice(preview.indexOf('<div className="hillside-stage"'), preview.indexOf('<ScoringPanel'));
+  const buttons = stage.match(/<button\b/g) ?? [];
+  assert.equal(buttons.length, 2, 'only Reset and Full screen remain on the stage');
   assert.ok(preview.includes('onClick={toggleFullscreen}'));
   assert.ok(preview.includes('el.requestFullscreen?.()'));
   assert.ok(preview.includes('document.exitFullscreen()'));
@@ -299,7 +302,7 @@ test('target dummy is a visible, player-sized figure at 61 m on the aim heading'
   try {
     const dummy = world.scene.getObjectByName('Target dummy');
     assert.equal(dummy, world.target);
-    assert.ok(Math.abs(Math.hypot(dummy!.position.x, dummy!.position.z) - 61) < 1e-6);
+    assert.ok(Math.abs(Math.hypot(dummy!.position.x - SHOT_SPOT.x, dummy!.position.z - SHOT_SPOT.z) - 61) < 1e-6);
     const box = new THREE.Box3().setFromObject(dummy!);
     const height = box.max.y - box.min.y;
     assert.ok(height > 1.7 && height < 2.1, `height ${height}`);
