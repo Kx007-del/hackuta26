@@ -1,6 +1,10 @@
 {
   "role": "codex-2",
-  "lease": null,
-  "status": "not-connected",
+  "lease": {
+    "session": "1333a205-b711-4997-ac60-adec2190b817",
+    "at": "2026-11-15T00:26:46.931Z",
+    "machine": "lib-LDQ92N3JG7"
+  },
+  "status": "waiting",
   "results": {}
 }
