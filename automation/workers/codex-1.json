@@ -1,10 +1,6 @@
 {
   "role": "codex-1",
-  "lease": {
-    "session": "9820b258-94c1-46f3-9ccb-3fe11f3872df",
-    "at": "2026-11-15T01:00:32.013Z",
-    "machine": "KrunalMadhani"
-  },
-  "status": "planning",
+  "lease": null,
+  "status": "offline",
   "results": {}
 }
