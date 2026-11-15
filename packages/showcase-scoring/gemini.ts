@@ -6,7 +6,8 @@
 
 export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-export const GEMINI_TIMEOUT_MS = 30_000;
+/** Comparing two videos regularly takes Gemini over 30 s; live attempts timed out at exactly 30 s. */
+export const GEMINI_TIMEOUT_MS = 90_000;
 
 export type GeminiComponents = { setup: number; turn: number; aimHold: number; shot: number; timing: number };
 export type GeminiJudgement = { similarity: number; components: GeminiComponents; feedback: string; confidence: number };
@@ -66,7 +67,8 @@ export function buildRequestBody(reference: { mimeType: string; base64: string }
         { inline_data: { mime_type: attempt.mimeType, data: attempt.base64 } },
       ],
     }],
-    generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
+    // Low media resolution: ~4x fewer tokens per frame, much faster on two clips, enough for movement and timing.
+    generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA, mediaResolution: 'MEDIA_RESOLUTION_LOW' },
   };
 }
 

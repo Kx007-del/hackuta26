@@ -23,7 +23,7 @@ export type ScoreResponse = {
 
 type Options = {
   /** Read on each request so a key added later is picked up; never logged or returned. */
-  env?: () => { apiKey?: string; model?: string };
+  env?: () => { apiKey?: string; model?: string; timeoutMs?: number };
   judge?: typeof judgeAttempt;
   referencePath?: string;
   maxConcurrent?: number;
@@ -33,7 +33,15 @@ type Options = {
 };
 
 export function registerShowcaseScoring(app: Express, options: Options = {}) {
-  const env = options.env ?? (() => ({ apiKey: process.env.GEMINI_API_KEY?.trim() || undefined, model: process.env.GEMINI_MODEL?.trim() || undefined }));
+  const env = options.env ?? (() => {
+    // Optional override, e.g. GEMINI_TIMEOUT_MS=120000. Clamped to 10–170 s.
+    const timeout = Number(process.env.GEMINI_TIMEOUT_MS);
+    return {
+      apiKey: process.env.GEMINI_API_KEY?.trim() || undefined,
+      model: process.env.GEMINI_MODEL?.trim() || undefined,
+      timeoutMs: Number.isFinite(timeout) && timeout > 0 ? Math.min(170_000, Math.max(10_000, timeout)) : undefined,
+    };
+  });
   const judge = options.judge ?? judgeAttempt;
   const maxConcurrent = options.maxConcurrent ?? 2;
   const aiPerMinute = options.aiPerMinute ?? 6;
@@ -101,8 +109,8 @@ export function registerShowcaseScoring(app: Express, options: Options = {}) {
       else {
         inFlight += 1;
         try {
-          const { apiKey, model } = env();
-          outcome = await judge({ apiKey, model, reference: loadReference(), attempt: { mimeType, base64: clip.toString('base64') } });
+          const { apiKey, model, timeoutMs } = env();
+          outcome = await judge({ apiKey, model, timeoutMs, reference: loadReference(), attempt: { mimeType, base64: clip.toString('base64') } });
         } finally { inFlight -= 1; }
         if (outcome.status === 'ok') {
           cache.set(key, { at: now(), outcome });
