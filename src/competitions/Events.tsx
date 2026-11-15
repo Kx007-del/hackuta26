@@ -56,7 +56,6 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 
 /** A full sponsored event from a fictional company, shown so visitors can see what a real one looks like. */
 function FeaturedSample({ event }: { event: SampleEvent }) {
   return <article className="event-card event-featured" aria-labelledby={`${event.id}-title`}>
-    <p className="event-sample-flag">SAMPLE EVENT · fictional company, players and prizes · view only</p>
     <p className="showcase-eyebrow">{event.package} event · presented by {event.sponsor}</p>
     <h3 id={`${event.id}-title`}>{event.title}</h3>
     {event.tagline && <p className="event-featured__tagline">{event.tagline}</p>}
@@ -69,12 +68,13 @@ function FeaturedSample({ event }: { event: SampleEvent }) {
     </dl>}
     <p>{event.description}</p>
     <div className="event-grid event-featured__grid">
-      {event.prizes && <section><h4>Prize pool <small>(example)</small></h4><ul className="event-featured__list">{event.prizes.map(p => <li key={p.place}><b>{p.place}</b> {p.reward}</li>)}</ul><p className="event-featured__fine">{event.prizeDescription}</p></section>}
+      {event.prizes && <section><h4>Prize pool</h4><ul className="event-featured__list">{event.prizes.map(p => <li key={p.place}><b>{p.place}</b> {p.reward}</li>)}</ul><p className="event-featured__fine">{event.prizeDescription}</p></section>}
       {event.schedule && <section><h4>Schedule</h4><ul className="event-featured__list">{event.schedule.map(s => <li key={s.when}><b>{s.when}</b> {s.what}</li>)}</ul></section>}
     </div>
     {event.rules && <details><summary>Official rules</summary><ol>{event.rules.map(r => <li key={r}>{r}</li>)}</ol></details>}
-    <div className="event-table"><table><caption>Qualifier standings (sample)</caption><thead><tr><th>Rank</th><th>Player</th><th>Best score</th></tr></thead>
+    <div className="event-table"><table><caption>Qualifier standings</caption><thead><tr><th>Rank</th><th>Player</th><th>Best score</th></tr></thead>
       <tbody>{event.leaderboard.map(row => <tr key={row.rank}><td>{row.rank}</td><td>{row.name}</td><td>{row.score}</td></tr>)}</tbody></table></div>
+    <p className="event-featured__fine">Example event: the sponsor, organizer, players and prizes are fictional.</p>
     <p className="event-featured__actions"><a className="showcase-start" href="/practice">Practice this challenge ↗</a> <a href="/host">Host an event like this ↗</a></p>
   </article>;
 }
@@ -91,8 +91,6 @@ export function EventsBrowse() {
     {featured && <><h2>Featured event</h2><FeaturedSample event={featured} /></>}
     <h2>Upcoming &amp; live</h2><BusyOrError load={list} />{list.data && !list.data.events.length && <p>No matching published events yet. <a href="/host">Create the first event</a>.</p>}
     <div className="event-grid">{list.data?.events.map(event => <EventLink key={event.id} event={event} />)}</div>
-    <details className="event-examples"><summary>Sample events — view only</summary><BusyOrError load={examples} />
-      {examples.data?.events.filter(event => !event.featured).map(event => <article className="event-card" key={event.id}><b>SAMPLE EVENT</b><h3>{event.title}</h3><p>{event.organizer} — fictional organizer.</p><p>{event.description}</p><p>{event.prizeDescription}</p></article>)}</details>
   </section>;
 }
 export function PublicEvent({ code }: { code: string }) {

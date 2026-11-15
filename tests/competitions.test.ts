@@ -282,5 +282,7 @@ test('featured sample event: a complete sponsored event that is clearly fictiona
   assert.match(String(e.code), /^EXAMPLE-/);
   assert.ok(e.prizes.length && e.schedule.length && e.rules.length && e.leaderboard.length >= 8);
   const ui = (await import('node:fs')).readFileSync(new URL('../src/competitions/Events.tsx', import.meta.url), 'utf8');
-  assert.match(ui, /SAMPLE EVENT · fictional company, players and prizes · view only/);
+  assert.match(ui, /Example event: the sponsor, organizer, players and prizes are fictional\./);
+  assert.doesNotMatch(ui, /Sample events — view only/, 'the old collapsed sample box is gone');
+  assert.equal(events.length, 1, 'only the featured example remains');
 });

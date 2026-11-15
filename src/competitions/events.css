@@ -27,7 +27,7 @@
 .event-metrics dt { font-size:12px; color:#ccc; }.event-metrics dd { margin:5px 0; font-size:26px; }
 .event-review { border-top:1px solid #ffffff24; padding:16px 0; }
 .events-view pre { white-space:pre-wrap; word-break:break-word; font-size:12px; }
-.event-examples { margin-top:36px; } .events-view summary { cursor:pointer; padding:8px 0; }
+.events-view summary { cursor:pointer; padding:8px 0; }
 .competition-nav a:focus-visible,.events-view :is(a,button,input,textarea,select,summary):focus-visible { outline:2px solid white; outline-offset:4px; }
 @media(max-width:760px) { .competition-nav { width:100%; margin:8px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:0 18px; }.competition-nav a { text-align:center; }.event-card { padding:16px; }.showcase-header { flex-wrap:wrap; } }
 /* Legacy arena CSS hides generic nav links on narrow screens; keep all four tabs visible. */
@@ -38,7 +38,6 @@
 .event-featured { border-color:#e4002b80; background:linear-gradient(160deg,#1c0d10 0%,#111 45%); }
 .event-featured h3 { font-family:Anton; font-size:clamp(28px,4vw,44px); letter-spacing:.02em; margin:6px 0; }
 .event-featured h4 { margin:0 0 8px; font-size:15px; letter-spacing:.06em; text-transform:uppercase; }
-.event-sample-flag { display:inline-block; margin:0 0 10px; padding:4px 10px; border:1px solid #ffffff4d; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.08em; color:#fff; background:#ffffff14; }
 .event-featured__tagline { font-size:17px; color:#fff; }
 .event-featured__stats { margin:18px 0; }
 .event-featured__status { font-size:18px !important; color:#e4002b; }
