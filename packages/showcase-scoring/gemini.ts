@@ -95,6 +95,18 @@ export function parseJudgement(text: unknown): GeminiJudgement | undefined {
 
 type FetchLike = (input: string, init: { method: string; headers: Record<string, string>; body: string; signal: AbortSignal }) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
 
+/**
+ * Logs why Gemini refused a request: HTTP status, Google's error code (e.g. PERMISSION_DENIED)
+ * and the machine-readable reason (e.g. API_KEY_INVALID, SERVICE_DISABLED). Never the key or body.
+ */
+function logGeminiError(model: string, status: number, body: unknown) {
+  const error = (body as { error?: { status?: unknown; details?: Array<{ reason?: unknown }> } } | undefined)?.error;
+  const clean = (value: unknown) => typeof value === 'string' ? value.replace(/[^A-Z0-9_]/g, '').slice(0, 40) : '';
+  const code = clean(error?.status);
+  const reason = clean(error?.details?.find(d => typeof d?.reason === 'string')?.reason);
+  console.error(`Gemini ${model} HTTP ${status}${code ? ' ' + code : ''}${reason ? ' ' + reason : ''}`);
+}
+
 /** Calls Gemini once, retrying once on 429/5xx. Never throws; never includes the key in its result. */
 export async function judgeAttempt(options: {
   apiKey: string | undefined;
@@ -117,6 +129,7 @@ export async function judgeAttempt(options: {
         body,
         signal: AbortSignal.timeout(options.timeoutMs ?? GEMINI_TIMEOUT_MS),
       });
+      if (!response.ok) logGeminiError(model, response.status, await response.json().catch(() => undefined));
       if (response.status === 404) return { status: 'unavailable', reason: 'model-unavailable' };
       if (response.status === 429 || response.status >= 500) { lastReason = response.status === 429 ? 'rate-limited' : 'upstream'; continue; }
       if (!response.ok) return { status: 'unavailable', reason: 'upstream' };
