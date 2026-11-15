@@ -871,3 +871,34 @@ footer {
 .share-panel input[aria-invalid="true"] {
   border-color: #ff4d6a;
 }
+.share-panel .board-opt-in {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font: 13px/1.4 Source;
+  letter-spacing: 0;
+  color: #d6d6dc;
+  cursor: pointer;
+}
+.share-panel .board-opt-in input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--red);
+}
+.board-status {
+  min-height: 1em;
+  margin: 0;
+  font-size: 12px;
+  color: #bcbcc2;
+}
+.board-status:empty {
+  display: none;
+}
+.home-leaderboard {
+  padding: 0 5.5% 65px;
+  max-width: 1680px;
+  margin: auto;
+}

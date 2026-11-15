@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { apiErrorHandler, registerApi } from "../packages/social/server";
 import { registerClipApi } from "../packages/social/clips";
+import { registerLeaderboardApi } from "../packages/leaderboard/server";
 import { resolveRuntimeConfig } from "./runtime-config";
 const { host, port, commit } = resolveRuntimeConfig(process.env);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -14,6 +15,7 @@ app.get("/api/health", (_req, res) =>
   res.json({ ok: true, service: "run-it-back", commit }),
 );
 const cleanup = registerApi(app, { clipLookup: clips.get });
+const closeLeaderboard = registerLeaderboardApi(app);
 app.use("/api", (_req, res) =>
   res.status(404).json({ error: "Unknown API route" }),
 );
@@ -39,6 +41,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.on(signal, () =>
     server.close(() => {
       cleanup();
+      closeLeaderboard();
       clips.close();
       process.exit(0);
     }),
