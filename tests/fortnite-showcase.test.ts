@@ -21,7 +21,7 @@ test('public entry uses the fixed Fortnite showcase rather than the legacy app',
   assert.doesNotMatch(entry, /from ["']\.\/App["']/);
   assert.equal(SHOWCASE_CONFIG.arenaId, 'buildyard-v1');
   const html = renderToStaticMarkup(createElement(FortniteShowcase, { search: '' }));
-  assert.match(html, /FORTNITE SHOWCASE/);
+  assert.match(html, /aria-label="Run It Back home"/);
   assert.doesNotMatch(html, /community-heading|Ridgeline Rae|<canvas/);
   assert.match(html, /href="\/practice" class="showcase-start">Try it yourself/);
   assert.match(html, /<video[^>]*controls/);
@@ -46,7 +46,7 @@ test('old game and relay deep links cannot select legacy experiences', () => {
     assert.equal(isLegacyShowcaseLink(search), true);
     const html = renderToStaticMarkup(createElement(FortniteShowcase, { search }));
     assert.match(html, /earlier demo/);
-    assert.match(html, /FORTNITE SHOWCASE/);
+    assert.match(html, /aria-label="Run It Back home"/);
     assert.doesNotMatch(html, /<canvas|CALL OF DUTY|VALORANT/);
   }
   assert.equal(isLegacyShowcaseLink('?screen=arena&arena=buildyard-v1'), false);

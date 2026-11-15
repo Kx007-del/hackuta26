@@ -61,17 +61,18 @@ export default function FortniteShowcase({
 
   return <div className="fortnite-showcase">
     <header className="showcase-header">
-      <a href="/" aria-label="Run It Back home"><img src="/brand/logo.png" alt="FaZe" /></a>
-      <span>RUN IT BACK / HACKUTA26</span><span className="showcase-tag">FORTNITE SHOWCASE</span>
+      <a className="showcase-brand" href="/" aria-label="Run It Back home">
+        <img src="/brand/logo.png" alt="FaZe" />
+        <span>RUN IT BACK</span>
+      </a>
     </header>
     <main>
-      <nav className="showcase-steps" aria-label="Showcase steps">
+      {step !== 'Practice' && <nav className="showcase-steps" aria-label="Showcase steps">
         <a href="/" aria-current={step === 'Reference' ? 'page' : undefined}>01 Reference</a>
-        <a href={PRACTICE} aria-current={step === 'Practice' ? 'page' : undefined}>02 Practice</a>
+        <a href={PRACTICE}>02 Practice</a>
         <span aria-current={step === 'Results' ? 'page' : undefined}>03 Results</span>
-      </nav>
+      </nav>}
       {step === 'Practice' ? <section className="showcase-route" aria-labelledby="practice-heading">
-        <p className="showcase-eyebrow">02 / PRACTICE</p>
         <h1 id="practice-heading">Take the trick shot</h1>
         <p className="showcase-muted">Run up the ramp, jump off the landing and turn toward the target. Take one shot, then exit to view your report.</p>
         {typeof window !== 'undefined' && <Suspense fallback={<p role="status">Loading the practice arena…</p>}>
