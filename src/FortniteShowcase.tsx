@@ -38,7 +38,7 @@ export default function FortniteShowcase({ search = window.location.search }: { 
       </section>
       <section className="showcase-practice" aria-labelledby="practice-heading">
         <p className="showcase-eyebrow">02 / SCENE PREVIEW</p>
-        <h2 id="practice-heading">EXPLORE THE HILLSIDE</h2>
+        <h2 id="practice-heading">Try it Yourself</h2>
         <p>Run the ramp, jump off the landing, turn toward the hill and take the shot. The target stands an estimated 61 m from spawn.</p>
         <p className="showcase-muted">Running, jumping and hip-fire are playable. Scoring and challenges are still being built.</p>
         {!playing
