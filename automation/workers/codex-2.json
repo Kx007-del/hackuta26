@@ -2,15 +2,19 @@
   "role": "codex-2",
   "lease": {
     "session": "1333a205-b711-4997-ac60-adec2190b817",
-    "at": "2026-11-15T00:29:44.967Z",
+    "at": "2026-11-15T00:29:53.192Z",
     "machine": "lib-LDQ92N3JG7"
   },
   "status": "working",
   "results": {
     "20f1c611-a1c1-4aaf-84a9-582f8612a102": {
-      "status": "running",
-      "startedAt": "2026-11-15T00:29:41.597Z",
-      "baseSha": "c14417a3409d58783342af07bbec709148c08ee5"
+      "status": "done",
+      "finishedAt": "2026-11-15T00:29:52.854Z",
+      "baseSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
+      "headSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
+      "branch": null,
+      "model": "assigned Codex profile",
+      "text": "TEAMRELAY-H26 | codex-2 | transport reply received | waiting for human resume."
     }
   }
 }
