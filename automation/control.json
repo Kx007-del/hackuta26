@@ -1,7 +1,7 @@
 {
   "version": 1,
   "runId": "f49ce0ee-c384-44f1-871d-5c9bb9e25fcb",
-  "status": "paused",
+  "status": "archiving",
   "goal": "",
   "baseSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
   "maxTurns": 30,
