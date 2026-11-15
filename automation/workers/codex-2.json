@@ -2,15 +2,15 @@
   "role": "codex-2",
   "lease": {
     "session": "1333a205-b711-4997-ac60-adec2190b817",
-    "at": "2026-11-15T00:45:06.500Z",
+    "at": "2026-11-15T00:45:19.026Z",
     "machine": "lib-LDQ92N3JG7"
   },
   "status": "working",
   "results": {
     "36c2f6af-6c96-4c1a-8dc8-7d513e3eeb1a": {
-      "status": "running",
-      "startedAt": "2026-11-15T00:45:02.486Z",
-      "baseSha": "a2d70805685bb1abda5fd3017444ecb6f185a4a7"
+      "status": "failed",
+      "finishedAt": "2026-11-15T00:45:18.673Z",
+      "error": "Agent reported a blocker; inspect local reply/logs"
     }
   }
 }
