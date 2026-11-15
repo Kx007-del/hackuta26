@@ -57,7 +57,8 @@ export function createEnvironment(scene: THREE.Scene, arenaId: ArenaId, distance
     return geometry;
   };
   function material(color: string, metalness=0, roughness=.85, map?: THREE.Texture) {
-    const m = new THREE.MeshStandardMaterial({color,metalness,roughness,map});
+    // Omit `map` when there is no texture; passing `map: undefined` makes three.js log a warning per material.
+    const m = new THREE.MeshStandardMaterial({color,metalness,roughness,...(map ? {map} : {})});
     materials.push(m);
     return m;
   }

@@ -8,7 +8,7 @@ type PracticeGuide = {
 
 export function practiceGuide(config: ChallengeConfig): PracticeGuide {
   const { templateId, targetDistance, requiredSpinDegrees, referenceClipId } = config;
-  const target = `the ${targetDistance} m target`;
+  const target = `the ${targetDistance}m target`;
   const presets: Record<ChallengeConfig['templateId'], PracticeGuide> = {
     jump: {
       title: 'Rooftop jump shot',
@@ -67,7 +67,7 @@ export function practiceGuide(config: ChallengeConfig): PracticeGuide {
       title: 'Courtyard dash peek',
       steps: [
         'Start on the ground behind the left crate, with the crate blocking your view of the target.',
-        'Press X once to dash 4 m to the right into the clear lane.',
+        'Press X once to dash 4m to the right into the clear lane.',
         `Release WASD, let the dash finish, and come to a stop. Aim at ${target} and fire while grounded and still.`,
       ],
       controls: ['X to dash right from cover'],

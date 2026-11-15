@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ARENAS, type ChallengeConfig, type ClipReference } from '../../shared/contracts';
-import { parseVideoLink, videoEmbedUrl, type VideoLink } from '../../shared/video-links';
+import { parseVideoLink, TIKTOK_HOSTS, videoEmbedUrl, type VideoLink } from '../../shared/video-links';
 import './clip-workbench.css';
 
 type Props = { config: ChallengeConfig; onChange: (config: ChallengeConfig) => void; locked?: boolean; onBusyChange?: (pending: boolean) => void };
@@ -85,7 +85,14 @@ export default function ClipWorkbench({ config, onChange, locked = false, onBusy
     setError(''); setNotice('');
     try {
       const parsed = parseVideoLink(url);
-      if (!parsed) { setError('For TikTok short share links, select USE THIS LINK to resolve and preview the video. Otherwise paste a full video URL.'); return; }
+      if (!parsed) {
+        // Only TikTok short share links need server-side resolution; anything else is simply unsupported.
+        const tiktok = TIKTOK_HOSTS.has(new URL(url.trim()).hostname);
+        setError(tiktok
+          ? 'For TikTok short share links, select USE THIS LINK to resolve and preview the video. Otherwise paste a full video URL.'
+          : 'Use a YouTube, YouTube Shorts, or TikTok video link, not a profile or playlist.');
+        return;
+      }
       setPreview(parsed);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Check the video link.'); }
   }
@@ -134,8 +141,10 @@ export default function ClipWorkbench({ config, onChange, locked = false, onBusy
       </div>
       <div className="clip-workbench__details">
         <span className="clip-workbench__eyebrow">WATCH → RECREATE → RAISE THE BAR</span>
-        <h2>{reference ? 'MAKE YOUR VERSION.' : 'ONE LINK. YOUR NEXT PLAY.'}</h2>
-        <p>Paste a public video link and choose the action’s start and end in seconds. Save up to 90 seconds as your squad’s reference moment.</p>
+        <h2>{reference ? 'MAKE YOUR VERSION.' : locked ? 'THE CHALLENGE IS SET.' : 'ONE LINK. YOUR NEXT PLAY.'}</h2>
+        <p>{locked
+          ? 'This challenge is locked. Match its arena settings in the practice arena below.'
+          : 'Paste a public video link and choose the action’s start and end in seconds. Save up to 90 seconds as your squad’s reference moment.'}</p>
         {reference && <div className="clip-reference-name"><strong>{reference.name}</strong><span>REFERENCE ATTACHED TO THIS CHALLENGE</span></div>}
         {!locked && <form className="clip-link-form" onSubmit={save}>
           <label htmlFor="clip-link">VIDEO LINK</label>

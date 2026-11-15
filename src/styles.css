@@ -860,3 +860,14 @@ footer {
 }
 
 .home-worlds{max-width:1400px;margin:0 auto;padding:0 5% 60px}.home-worlds .environment-card{min-height:220px}
+
+/* Inline validation shown directly under the player-name field (issue #11). */
+.share-panel .field-error {
+  margin: -4px 0 12px;
+  color: #ff8a9b;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.share-panel input[aria-invalid="true"] {
+  border-color: #ff4d6a;
+}
