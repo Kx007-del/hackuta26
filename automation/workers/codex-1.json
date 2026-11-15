@@ -2,9 +2,9 @@
   "role": "codex-1",
   "lease": {
     "session": "470e49df-5e75-495e-8bee-ceb36c774e5f",
-    "at": "2026-11-15T00:45:12.547Z",
+    "at": "2026-11-15T00:45:47.402Z",
     "machine": "KrunalMadhani"
   },
-  "status": "running",
+  "status": "blocked",
   "results": {}
 }
