@@ -2,9 +2,9 @@
   "role": "claude-2",
   "lease": {
     "session": "222fb2a1-21bc-441b-a391-f9ff04f39224",
-    "at": "2026-11-15T00:14:15.818Z",
+    "at": "2026-11-15T00:14:18.636Z",
     "machine": "OmniBook"
   },
-  "status": "waiting",
+  "status": "blocked",
   "results": {}
 }
