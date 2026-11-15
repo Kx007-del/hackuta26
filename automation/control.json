@@ -63,11 +63,53 @@
     }
   ],
   "humanResume": null,
-  "summary": "Human authorized setup-only recovery; failed turn preserved; feature work remains paused.",
+  "summary": "All five assigned profiles have live heartbeats and successful setup replies. Feature work paused. Codex 3 coding-file access remains unverified after earlier policy failure.",
   "setupRecovery": {
     "instruction": "Yes—recover setup checks only",
     "at": "2026-11-15T00:29:23.675Z",
     "previousFailure": "codex-3 stopped on f97732f3-fbed-4b8a-852f-1adc3cead87b: Agent reported a blocker; inspect local reply/logs",
     "newTaskId": "082a7063-2329-4d38-8324-7abc800f4a26"
+  },
+  "setupVerification": {
+    "at": "2026-11-15T00:30:55.099Z",
+    "transportConnected": true,
+    "codex3FileAccessVerified": false,
+    "proof": [
+      {
+        "role": "codex-1",
+        "taskId": "843868ec-f598-4d99-9f25-fdae003467ec",
+        "headSha": "c14417a3409d58783342af07bbec709148c08ee5",
+        "model": "assigned Codex profile",
+        "heartbeat": "2026-11-15T00:30:48.270Z"
+      },
+      {
+        "role": "codex-2",
+        "taskId": "20f1c611-a1c1-4aaf-84a9-582f8612a102",
+        "headSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
+        "model": "assigned Codex profile",
+        "heartbeat": "2026-11-15T00:30:24.718Z"
+      },
+      {
+        "role": "codex-3",
+        "taskId": "082a7063-2329-4d38-8324-7abc800f4a26",
+        "headSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
+        "model": "assigned Codex profile",
+        "heartbeat": "2026-11-15T00:30:47.119Z"
+      },
+      {
+        "role": "claude-1",
+        "taskId": "115795ac-1301-49b3-82ba-e36a4ad6d88d",
+        "headSha": "c14417a3409d58783342af07bbec709148c08ee5",
+        "model": "claude-opus-5-5",
+        "heartbeat": "2026-11-15T00:30:23.971Z"
+      },
+      {
+        "role": "claude-2",
+        "taskId": "a70992b1-baa4-48c8-a137-7423af12e240",
+        "headSha": "effe5fb47e99da7e51bf98b89a29acd00e9b0d8d",
+        "model": "claude-opus-5-5",
+        "heartbeat": "2026-11-15T00:30:44.670Z"
+      }
+    ]
   }
 }
