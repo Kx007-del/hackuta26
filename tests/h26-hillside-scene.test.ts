@@ -323,3 +323,28 @@ test('hitscan: aiming at the dummy hits, a small miss or aiming through the hill
   const underground = eye.clone().setY(terrainHeight(eye.x, eye.z) - 4);
   assert.equal(rayHitsTarget(underground, chest.clone().sub(underground)), false, 'terrain blocks the shot');
 });
+
+test('a target you can see is a target you can hit: shot occlusion matches the rendered ground', async () => {
+  const { renderedTerrainHeight } = await import('../packages/gameplay/hillsideScene');
+  // Regression: occlusion used the smooth terrain formula while the GPU draws a coarser mesh,
+  // so ~18% of clearly visible shots over the crest scored as blocked.
+  let checked = 0;
+  for (const aimY of [.4, 1.1, 1.6]) for (let x = -30; x <= 30; x += 4) for (let z = -30; z <= 30; z += 4) {
+    const eye = new THREE.Vector3(x, terrainHeight(x, z) + 2.45, z);
+    const aim = targetBase.clone().add(new THREE.Vector3(0, aimY, 0));
+    const d = aim.clone().sub(eye), length = d.length();
+    d.normalize();
+    let clear = true;
+    for (let t = .25; t < length - .5 && clear; t += .25) {
+      const q = eye.clone().addScaledVector(d, t);
+      if (q.y < renderedTerrainHeight(q.x, q.z)) clear = false;
+      // Only terrain-only sight lines: skip anything crossing the build or the hut, which block on purpose.
+      const surface = walkHeight(q.x, q.z, 100);
+      if (surface === undefined || surface !== terrainHeight(q.x, q.z)) clear = false;
+    }
+    if (!clear || walkHeight(x, z, 100) !== terrainHeight(x, z)) continue; // skip spots on or under the build
+    checked++;
+    assert.equal(rayHitsTarget(eye, aim.clone().sub(eye)), true, `visible shot from (${x}, ${z}) aimed at +${aimY} m was blocked`);
+  }
+  assert.ok(checked > 200, `enough clear sight lines sampled (${checked})`);
+});
