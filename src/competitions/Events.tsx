@@ -148,6 +148,7 @@ export function HostHome() {
   const [created, setCreated] = useState<CompetitionView>();
   return <section className="showcase-route events-view"><p className="showcase-eyebrow">YOUR COMMUNITY. YOUR CHALLENGE.</p><h1>Host an Event</h1>
     <p>Create a competition for your community. Set the rules, invite players and track results on your event’s own leaderboard.</p><EventDetails />
+    <section className="event-card host-demo-entry"><div><p className="showcase-eyebrow">PRESENT THE HOST EXPERIENCE</p><h2>Try the host demo.</h2><p>Explore a ready-made organizer workspace, fictional leaderboards, review controls and analytics. No account needed. No real data changed.</p></div><a className="showcase-start" href="/host/demo">Explore host demo ↗</a></section>
     <p>Hosting is free, with no payment required. Sign in to access your account’s events across devices, or use this browser’s guest profile.</p>
     {me.status === 401 ? <Identity onReady={() => refresh(v => v + 1)} /> : <BusyOrError load={me} />}
     {me.data && !me.data.hosting && <form className="event-card" onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { await api('/api/organizer/enroll', { package: hostingPackage, acknowledgeDemo: true }); refresh(v => v + 1); } catch (error) { setError((error as Error).message); } finally { setBusy(false); } }}>
